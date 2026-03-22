@@ -8,7 +8,7 @@ import { formatCurrency } from "@/lib/currencies";
 import { MOCK_TRANSACTIONS } from "@/lib/mock-data";
 import type { Transaction } from "@/lib/mock-data";
 import type { CurrencyCode } from "@/lib/constants";
-import { useUserCurrency } from "@/hooks/use-currency";
+import { useCurrency, useUserCurrency } from "@/hooks/use-currency";
 
 // ── Styles (faithful port of react-app-8.js) ──────────────────────
 
@@ -75,6 +75,33 @@ const ts = {
     background: "rgba(255, 179, 71, 0.1)",
     border: "1px solid rgba(255, 179, 71, 0.15)",
   },
+  insightCard: {
+    background: "rgba(255, 255, 255, 0.04)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRadius: "20px",
+    padding: "24px",
+  } as React.CSSProperties,
+  insightCardAmber: {
+    background: "rgba(255, 179, 71, 0.06)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    border: "1px solid rgba(255, 179, 71, 0.15)",
+    borderRadius: "20px",
+    padding: "24px",
+  } as React.CSSProperties,
+  subscriptionCard: {
+    background: "rgba(255, 255, 255, 0.03)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    border: "1px solid rgba(255, 255, 255, 0.06)",
+    borderRadius: "16px",
+    padding: "16px 20px",
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+  } as React.CSSProperties,
   glow1: {
     position: "fixed" as const,
     top: "-20%",
@@ -411,6 +438,51 @@ function adaptToDisplayTransactions(
   });
 }
 
+// ── Category display config ───────────────────────────────────────
+
+const CATEGORY_DISPLAY: Record<string, { label: string; color: string }> = {
+  rent: { label: "Rent & Housing", color: "#E8614D" },
+  food: { label: "Food & Groceries", color: "#F59E0B" },
+  market: { label: "Market Shopping", color: "#F59E0B" },
+  transport: { label: "Transport", color: "#5B9A6D" },
+  data_airtime: { label: "Data & Airtime", color: "#2563EB" },
+  family_support: { label: "Family Support", color: "#D4A843" },
+  church_tithes: { label: "Tithes & Offerings", color: "#8B5CF6" },
+  entertainment: { label: "Entertainment", color: "#A855F7" },
+  utilities: { label: "Utilities & Bills", color: "#EC4899" },
+  owambe: { label: "Owambe & Aso Ebi", color: "#EC4899" },
+  savings: { label: "Savings", color: "#5B9A6D" },
+  health: { label: "Health", color: "#EF4444" },
+  generator: { label: "Generator & Fuel", color: "#F97316" },
+};
+
+interface CategoryBreakdown {
+  category: string;
+  label: string;
+  amount: number;
+  percentage: number;
+  color: string;
+}
+
+// ── Mock subscriptions ───────────────────────────────────────────
+
+interface Subscription {
+  name: string;
+  amount: number;
+  frequency: "monthly" | "annual";
+  nextPayment: string;
+  color: string;
+  initial: string;
+}
+
+const MOCK_SUBSCRIPTIONS: Subscription[] = [
+  { name: "Netflix", amount: 4900, frequency: "monthly", nextPayment: "2026-04-01", color: "#E50914", initial: "N" },
+  { name: "MTN Data", amount: 3000, frequency: "monthly", nextPayment: "2026-04-03", color: "#FFD700", initial: "M" },
+  { name: "Showmax", amount: 2900, frequency: "monthly", nextPayment: "2026-04-05", color: "#FF6B00", initial: "S" },
+  { name: "YouTube Premium", amount: 1100, frequency: "monthly", nextPayment: "2026-04-08", color: "#FF0000", initial: "Y" },
+  { name: "Spotify", amount: 900, frequency: "monthly", nextPayment: "2026-04-10", color: "#1DB954", initial: "S" },
+];
+
 // ── Main Page ─────────────────────────────────────────────────────
 
 export default function TransactionsPage() {
@@ -468,6 +540,58 @@ export default function TransactionsPage() {
     () => adaptToDisplayTransactions(rawTransactions, currency),
     [rawTransactions, currency],
   );
+
+  // ── Spending insights (computed from real transactions) ──────
+  const { format: fmtCurrency } = useCurrency(currency);
+
+  const spendingBreakdown: CategoryBreakdown[] = useMemo(() => {
+    const debits = rawTransactions.filter((tx) => tx.type === "debit");
+    const totalSpend = debits.reduce((s, tx) => s + Math.abs(tx.amount), 0);
+    const grouped: Record<string, number> = {};
+    for (const tx of debits) {
+      const cat = tx.category;
+      if (cat === "income") continue;
+      grouped[cat] = (grouped[cat] ?? 0) + Math.abs(tx.amount);
+    }
+    return Object.entries(grouped)
+      .map(([cat, amount]) => ({
+        category: cat,
+        label: CATEGORY_DISPLAY[cat]?.label ?? cat.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        amount,
+        percentage: totalSpend > 0 ? (amount / totalSpend) * 100 : 0,
+        color: CATEGORY_DISPLAY[cat]?.color ?? "#968a84",
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [rawTransactions]);
+
+  const moneyFlow = useMemo(() => {
+    const totalIncome = rawTransactions
+      .filter((tx) => tx.type === "credit")
+      .reduce((s, tx) => s + Math.abs(tx.amount), 0);
+    const totalSpending = rawTransactions
+      .filter((tx) => tx.type === "debit")
+      .reduce((s, tx) => s + Math.abs(tx.amount), 0);
+    return {
+      income: totalIncome,
+      spending: totalSpending,
+      net: totalIncome - totalSpending,
+    };
+  }, [rawTransactions]);
+
+  const topCategoryInsight = useMemo(() => {
+    if (spendingBreakdown.length === 0) return null;
+    const top = spendingBreakdown[0]!;
+    // Simulate a month-over-month comparison (mock: 12% higher)
+    const mockMoMDelta = 12;
+    return {
+      name: top.label,
+      percentage: top.percentage.toFixed(1),
+      momDelta: mockMoMDelta,
+      direction: "higher" as const,
+    };
+  }, [spendingBreakdown]);
+
+  const totalSubscriptionCost = MOCK_SUBSCRIPTIONS.reduce((s, sub) => s + sub.amount, 0);
 
   // ── Local state ────────────────────────────────────────────────
   const [activeFilter, setActiveFilter] = useState("All");
@@ -743,6 +867,385 @@ export default function TransactionsPage() {
               />
             </div>
           </header>
+
+          {/* ── Spending Insights Section ─────────────────────── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+            {/* Mo's Spending Pattern Callout */}
+            {topCategoryInsight && (
+              <div style={ts.insightCardAmber}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
+                  <div
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "14px",
+                      background: "rgba(255, 179, 71, 0.15)",
+                      border: "1px solid rgba(255, 179, 71, 0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      fontSize: "22px",
+                    }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb347" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p
+                      style={{
+                        fontFamily: "'DynaPuff', cursive",
+                        fontSize: "0.95rem",
+                        color: "#ffb347",
+                        marginBottom: "6px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Mo&apos;s Spending Insight
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: "'Inter', sans-serif",
+                        fontSize: "0.875rem",
+                        color: "rgba(255, 255, 255, 0.8)",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      Your top spending category this month is{" "}
+                      <span style={{ color: "#ffb347", fontWeight: 600 }}>{topCategoryInsight.name}</span>
+                      {" "}at{" "}
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#ffb347", fontWeight: 700 }}>
+                        {topCategoryInsight.percentage}%
+                      </span>
+                      {" "}of total spending. That&apos;s{" "}
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EF4444", fontWeight: 700 }}>
+                        {topCategoryInsight.momDelta}% {topCategoryInsight.direction}
+                      </span>
+                      {" "}than last month. Consider setting a budget cap to keep this in check.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Money Flow Summary */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              {/* Income */}
+              <div style={ts.insightCard}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "10px",
+                      background: "rgba(74, 222, 128, 0.1)",
+                      border: "1px solid rgba(74, 222, 128, 0.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                      <polyline points="17 6 23 6 23 12" />
+                    </svg>
+                  </div>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "#968a84", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Income
+                  </span>
+                </div>
+                <p
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "1.5rem",
+                    fontWeight: 700,
+                    color: "#4ade80",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {fmtCurrency(moneyFlow.income)}
+                </p>
+              </div>
+
+              {/* Spending */}
+              <div style={ts.insightCard}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "10px",
+                      background: "rgba(239, 68, 68, 0.1)",
+                      border: "1px solid rgba(239, 68, 68, 0.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+                      <polyline points="17 18 23 18 23 12" />
+                    </svg>
+                  </div>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "#968a84", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Spending
+                  </span>
+                </div>
+                <p
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "1.5rem",
+                    fontWeight: 700,
+                    color: "#ef4444",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {fmtCurrency(moneyFlow.spending)}
+                </p>
+              </div>
+
+              {/* Net Flow */}
+              <div style={ts.insightCard}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "10px",
+                      background: "rgba(255, 179, 71, 0.1)",
+                      border: "1px solid rgba(255, 179, 71, 0.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffb347" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="1" x2="12" y2="23" />
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                  </div>
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "#968a84", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Net Flow
+                  </span>
+                </div>
+                <p
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "1.5rem",
+                    fontWeight: 700,
+                    color: moneyFlow.net >= 0 ? "#ffb347" : "#ef4444",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {moneyFlow.net >= 0 ? "+" : ""}{fmtCurrency(moneyFlow.net)}
+                </p>
+              </div>
+            </div>
+
+            {/* Monthly Spending Breakdown by Category */}
+            <div style={ts.insightCard}>
+              <h2
+                style={{
+                  fontFamily: "'DynaPuff', cursive",
+                  fontSize: "1.15rem",
+                  color: "#ffffff",
+                  marginBottom: "20px",
+                  fontWeight: 600,
+                }}
+              >
+                Spending Breakdown
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                {spendingBreakdown.slice(0, 8).map((cat) => (
+                  <div key={cat.category}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "'Inter', sans-serif",
+                          fontSize: "0.85rem",
+                          color: "rgba(255, 255, 255, 0.85)",
+                          fontWeight: 500,
+                        }}
+                      >
+                        {cat.label}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "0.85rem",
+                            color: "#ffffff",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {fmtCurrency(cat.amount)}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "0.75rem",
+                            color: "#968a84",
+                            minWidth: "42px",
+                            textAlign: "right",
+                          }}
+                        >
+                          {cat.percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "8px",
+                        borderRadius: "4px",
+                        background: "rgba(255, 255, 255, 0.06)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${Math.min(cat.percentage, 100)}%`,
+                          height: "100%",
+                          borderRadius: "4px",
+                          background: cat.color,
+                          transition: "width 0.6s ease",
+                          boxShadow: `0 0 12px ${cat.color}40`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Subscriptions Section ─────────────────────────── */}
+          <div style={ts.insightCard}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+              <h2
+                style={{
+                  fontFamily: "'DynaPuff', cursive",
+                  fontSize: "1.15rem",
+                  color: "#ffffff",
+                  fontWeight: 600,
+                }}
+              >
+                Subscriptions
+              </h2>
+              <div
+                style={{
+                  background: "rgba(255, 179, 71, 0.08)",
+                  border: "1px solid rgba(255, 179, 71, 0.2)",
+                  borderRadius: "9999px",
+                  padding: "6px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffb347" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.8rem", color: "#ffb347", fontWeight: 600 }}>
+                  {fmtCurrency(totalSubscriptionCost)}/month
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {MOCK_SUBSCRIPTIONS.map((sub) => (
+                <div key={sub.name} style={ts.subscriptionCard}>
+                  {/* Initial badge */}
+                  <div
+                    style={{
+                      width: "42px",
+                      height: "42px",
+                      borderRadius: "12px",
+                      background: `${sub.color}20`,
+                      border: `1px solid ${sub.color}40`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: "'DynaPuff', cursive",
+                      fontSize: "1rem",
+                      fontWeight: 700,
+                      color: sub.color,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {sub.initial}
+                  </div>
+                  {/* Details */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.9rem", fontWeight: 600, color: "#ffffff", marginBottom: "2px" }}>
+                      {sub.name}
+                    </p>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "#968a84" }}>
+                      {sub.frequency === "monthly" ? "Monthly" : "Annual"} &middot; Next: {new Date(sub.nextPayment).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </p>
+                  </div>
+                  {/* Amount */}
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "0.95rem",
+                      fontWeight: 700,
+                      color: "#ffffff",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {fmtCurrency(sub.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Subscription tip */}
+            <div
+              style={{
+                marginTop: "16px",
+                padding: "14px 18px",
+                background: "rgba(255, 179, 71, 0.05)",
+                border: "1px solid rgba(255, 179, 71, 0.1)",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffb347" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.7)", lineHeight: 1.5 }}>
+                You&apos;re spending{" "}
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#ffb347", fontWeight: 700 }}>
+                  {fmtCurrency(totalSubscriptionCost)}
+                </span>
+                /month on subscriptions. Review unused services to free up cash for savings.
+              </p>
+            </div>
+          </div>
 
           {/* Filters Row */}
           <div

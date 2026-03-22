@@ -43,16 +43,53 @@ const SUGGESTED_PROMPTS: SuggestedPrompt[] = [
   { label: "Roast my spending!", icon: Fire },
 ];
 
+// ── Mo mascot avatar ─────────────────────────────────────────────────
+
+function MoMascot({ size = 32 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="shrink-0"
+    >
+      <circle cx="20" cy="20" r="20" fill="#ffb347" />
+      {/* Left eye - friendly arc */}
+      <path
+        d="M12 16 Q14 12, 16 16"
+        stroke="#0d0b0a"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Right eye - friendly arc */}
+      <path
+        d="M24 16 Q26 12, 28 16"
+        stroke="#0d0b0a"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Smile */}
+      <path
+        d="M13 24 Q20 31, 27 24"
+        stroke="#0d0b0a"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
 // ── Typing indicator ─────────────────────────────────────────────────
 
 function TypingIndicator() {
   return (
     <div className="flex items-end gap-2.5 max-w-[85%]">
-      <Avatar size="sm" className="shrink-0">
-        <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
-          Mo
-        </AvatarFallback>
-      </Avatar>
+      <MoMascot size={28} />
       <div className="rounded-2xl rounded-bl-sm bg-primary/10 px-4 py-3 dark:bg-secondary/10">
         <div className="flex items-center gap-1">
           <span
@@ -283,11 +320,7 @@ export function WmAiSholzChat({ className }: WmAiSholzChatProps) {
       {/* ── Header ────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Avatar size="default">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-              Mo
-            </AvatarFallback>
-          </Avatar>
+          <MoMascot size={32} />
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-heading text-sm font-semibold">Mo</h3>
@@ -392,22 +425,15 @@ export function WmAiSholzChat({ className }: WmAiSholzChatProps) {
               >
                 {/* Avatar (AI only) */}
                 {message.role === "assistant" && (
-                  <Avatar size="sm" className="shrink-0">
-                    <AvatarFallback
-                      className={cn(
-                        "text-[10px] font-bold",
-                        message.isError
-                          ? "bg-destructive text-destructive-foreground"
-                          : "bg-primary text-primary-foreground"
-                      )}
-                    >
-                      {message.isError ? (
+                  message.isError ? (
+                    <Avatar size="sm" className="shrink-0">
+                      <AvatarFallback className="bg-destructive text-destructive-foreground text-[10px] font-bold">
                         <WarningCircle className="size-3" />
-                      ) : (
-                        "Mo"
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <MoMascot size={28} />
+                  )
                 )}
 
                 {/* Message bubble */}
@@ -479,6 +505,11 @@ export function WmAiSholzChat({ className }: WmAiSholzChatProps) {
             <span className="sr-only">Send message</span>
           </Button>
         </form>
+        {/* Persistent disclaimer below input */}
+        <p className="mt-2 flex items-center justify-center gap-1 text-[10px]" style={{ color: "#968a84" }}>
+          <Info className="size-3 shrink-0" />
+          Mo can make mistakes. Verify important financial information.
+        </p>
       </div>
     </div>
   );

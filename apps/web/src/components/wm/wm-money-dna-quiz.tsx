@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Sparkle } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   MONEY_DNA_QUESTIONS,
   calculateMoneyDna,
@@ -21,6 +20,7 @@ export function WmMoneyDnaQuiz({ onComplete }: WmMoneyDnaQuizProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [isRevealing, setIsRevealing] = useState(false);
 
@@ -32,6 +32,7 @@ export function WmMoneyDnaQuiz({ onComplete }: WmMoneyDnaQuizProps) {
     (option: QuizOption) => {
       if (!question) return;
       setSelectedOption(option.id);
+      setIsTransitioning(true);
 
       // Brief delay so the user sees their selection highlighted
       setTimeout(() => {
@@ -50,6 +51,7 @@ export function WmMoneyDnaQuiz({ onComplete }: WmMoneyDnaQuizProps) {
             onComplete(result);
           }, 2000);
         }
+        setIsTransitioning(false);
       }, 400);
     },
     [answers, currentQuestion, totalQuestions, question, onComplete],
@@ -58,10 +60,15 @@ export function WmMoneyDnaQuiz({ onComplete }: WmMoneyDnaQuizProps) {
   const handleBack = useCallback(() => {
     if (currentQuestion > 0) {
       setDirection(-1);
-      setCurrentQuestion((prev) => prev - 1);
-      setSelectedOption(null);
+      const prevIndex = currentQuestion - 1;
+      const prevQuestion = MONEY_DNA_QUESTIONS[prevIndex];
+      // Restore previously selected answer for the question we're going back to
+      const previousAnswer = prevQuestion ? answers[prevQuestion.id] : null;
+      setCurrentQuestion(prevIndex);
+      setSelectedOption(previousAnswer ?? null);
+      setIsTransitioning(false);
     }
-  }, [currentQuestion]);
+  }, [currentQuestion, answers]);
 
   if (!question) return null;
 
@@ -136,17 +143,21 @@ export function WmMoneyDnaQuiz({ onComplete }: WmMoneyDnaQuizProps) {
         </div>
       </div>
 
-      {/* Back button */}
+      {/* Back button - glassmorphism style for visibility */}
       {currentQuestion > 0 && (
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={handleBack}
-          className="mb-4 w-fit gap-1.5 text-muted-foreground"
+          className="mb-4 w-fit flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all hover:bg-white/10"
+          style={{
+            color: "#968a84",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: "rgba(255, 255, 255, 0.04)",
+            backdropFilter: "blur(8px)",
+          }}
         >
           <ArrowLeft className="size-4" />
           Back
-        </Button>
+        </button>
       )}
 
       {/* Question card with animations */}
@@ -189,7 +200,7 @@ export function WmMoneyDnaQuiz({ onComplete }: WmMoneyDnaQuizProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.08, duration: 0.3 }}
                 onClick={() => handleSelect(option)}
-                disabled={selectedOption !== null}
+                disabled={isTransitioning}
                 className={cn(
                   "group relative flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all duration-200",
                   "hover:border-primary/50 hover:bg-primary/5 hover:shadow-md",

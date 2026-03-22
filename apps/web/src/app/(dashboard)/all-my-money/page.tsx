@@ -534,19 +534,19 @@ function AccountCard({
 
 // ── Quick Action Button ──────────────────────────────────────────
 
-function QuickActionButton({
-  label,
-  emoji,
-  onClick,
-}: {
-  label: string;
-  emoji: string;
-  onClick: () => void;
-}) {
+const QuickActionButton = React.forwardRef<
+  HTMLButtonElement,
+  {
+    label: string;
+    emoji: string;
+    onClick?: () => void;
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>
+>(function QuickActionButton({ label, emoji, onClick, ...rest }, ref) {
   const [hovered, setHovered] = useState(false);
 
   return (
     <button
+      ref={ref}
       style={{
         ...s.quickActionBtn,
         transform: hovered ? "translateY(-2px)" : "translateY(0)",
@@ -560,12 +560,13 @@ function QuickActionButton({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onClick}
+      {...rest}
     >
       <span style={{ fontSize: "1.2rem" }}>{emoji}</span>
       {label}
     </button>
   );
-}
+});
 
 // ── Net Worth Card Component ──────────────────────────────────────
 

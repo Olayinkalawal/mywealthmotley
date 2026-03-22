@@ -73,6 +73,14 @@ const scrollbarCSS = `
   .wm-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
   .wm-sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
   .wm-sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+  @keyframes wmPulseGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); opacity: 1; }
+    50% { box-shadow: 0 0 8px 3px rgba(52, 211, 153, 0.25); opacity: 0.7; }
+  }
+  .wm-pulse-dot {
+    animation: wmPulseGlow 2s ease-in-out infinite;
+  }
 `;
 
 function useScrollbarStyles() {
@@ -230,6 +238,23 @@ function NavItem({
 /*  Section label                                                      */
 /* ------------------------------------------------------------------ */
 
+function PulseDot({ onClick }: { onClick?: (e: React.MouseEvent) => void }) {
+  return (
+    <span
+      className="relative flex h-3 w-3 shrink-0 cursor-pointer group-data-[collapsible=icon]:hidden"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick?.(e);
+      }}
+      title="Click to dismiss"
+    >
+      <span className="absolute inset-0 rounded-full bg-[#34d399] wm-pulse-dot" />
+      <span className="relative inline-flex rounded-full h-3 w-3 bg-[#34d399]" />
+    </span>
+  );
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="text-[10px] wm-mono text-[#968a84] uppercase tracking-wider mb-2 px-3 group-data-[collapsible=icon]:hidden">
@@ -253,6 +278,7 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
   const { state, toggleSidebar, isMobile } = useSidebar();
   const isAdmin = variant === "admin";
   const [adminOpen, setAdminOpen] = React.useState(isAdmin);
+  const [portfolioDotDismissed, setPortfolioDotDismissed] = React.useState(false);
   const isCollapsed = state === "collapsed" && !isMobile;
 
   useScrollbarStyles();
@@ -402,6 +428,11 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
             active={isActive(ROUTES.portfolio)}
             icon={TrendUp}
             label="Portfolio"
+            badge={
+              !portfolioDotDismissed && !isActive(ROUTES.portfolio) ? (
+                <PulseDot onClick={() => setPortfolioDotDismissed(true)} />
+              ) : undefined
+            }
           />
         </div>
 

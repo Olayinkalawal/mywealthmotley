@@ -15,6 +15,49 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MOCK_SAVINGS_GOALS } from "@/lib/mock-data";
 import type { SavingsGoal } from "@/lib/mock-data";
 import { useUserCurrency } from "@/hooks/use-currency";
+import { formatCurrency } from "@/lib/currencies";
+
+// ── Smart Savings Recommendations (consumer product comparisons) ────
+
+interface SavingsRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  monthlySavings: number;
+  currency: string;
+  category: "streaming" | "data" | "carrier_deal";
+  color: string;
+}
+
+const MOCK_RECOMMENDATIONS: SavingsRecommendation[] = [
+  {
+    id: "rec-1",
+    title: "Switch Netflix to Showmax",
+    description: "Showmax offers similar content library with local African originals. Netflix Basic is \u20A64,900/mo vs Showmax Mobile at \u20A62,900/mo.",
+    monthlySavings: 2000,
+    currency: "NGN",
+    category: "streaming",
+    color: "#4ade80",
+  },
+  {
+    id: "rec-2",
+    title: "Optimise your MTN data plan",
+    description: "MTN offers 1.5GB for \u20A6500 on the XtraData plan, compared to your current \u20A63,000 bundle. Stack multiple 1.5GB plans for better value.",
+    monthlySavings: 1500,
+    currency: "NGN",
+    category: "data",
+    color: "#FFD700",
+  },
+  {
+    id: "rec-3",
+    title: "Get Netflix through EE (UK users)",
+    description: "EE Smart Plans include Netflix Basic at no extra cost. If you\u2019re on EE, you could get Netflix for effectively \u00A31/month as an add-on.",
+    monthlySavings: 3900,
+    currency: "NGN",
+    category: "carrier_deal",
+    color: "#60a5fa",
+  },
+];
 
 // ── Adapt Convex savings goal data to component shape ───────────────
 function adaptGoals(convexGoals: any[]): SavingsGoal[] {
@@ -167,6 +210,145 @@ export default function SavingsPage() {
         goals={goals}
         currency={currency}
       />
+
+      {/* ── Smart Savings Tips ──────────────────────────────── */}
+      <div
+        style={{
+          background: "rgba(255, 255, 255, 0.04)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "20px",
+          padding: "24px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+          <div
+            style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "10px",
+              background: "rgba(74, 222, 128, 0.1)",
+              border: "1px solid rgba(74, 222, 128, 0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+          </div>
+          <h2 className="font-heading text-lg font-bold">Smart Savings Tips</h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {MOCK_RECOMMENDATIONS.map((rec) => (
+            <div
+              key={rec.id}
+              style={{
+                background: "rgba(255, 255, 255, 0.03)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                borderRadius: "16px",
+                padding: "20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+              }}
+            >
+              {/* Savings badge */}
+              <div
+                style={{
+                  alignSelf: "flex-start",
+                  background: "rgba(74, 222, 128, 0.1)",
+                  border: "1px solid rgba(74, 222, 128, 0.2)",
+                  borderRadius: "9999px",
+                  padding: "4px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                  <polyline points="17 6 23 6 23 12" />
+                </svg>
+                <span
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    color: "#4ade80",
+                  }}
+                >
+                  Save {formatCurrency(rec.monthlySavings, rec.currency)}/mo
+                </span>
+              </div>
+
+              {/* Title */}
+              <h3
+                style={{
+                  fontFamily: "'DynaPuff', cursive",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  color: "#ffffff",
+                  lineHeight: 1.3,
+                }}
+              >
+                {rec.title}
+              </h3>
+
+              {/* Description */}
+              <p
+                style={{
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "0.8rem",
+                  color: "rgba(255, 255, 255, 0.6)",
+                  lineHeight: 1.5,
+                  flex: 1,
+                }}
+              >
+                {rec.description}
+              </p>
+
+              {/* Learn More link */}
+              <button
+                style={{
+                  alignSelf: "flex-start",
+                  background: "rgba(255, 179, 71, 0.05)",
+                  border: "1px solid rgba(255, 179, 71, 0.2)",
+                  borderRadius: "9999px",
+                  padding: "8px 18px",
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  color: "#ffb347",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                Learn More
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Disclaimer */}
+        <p
+          style={{
+            marginTop: "16px",
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "0.7rem",
+            color: "rgba(255, 255, 255, 0.35)",
+            lineHeight: 1.5,
+            maxWidth: "640px",
+          }}
+        >
+          Savings estimates are approximate. We may earn a commission from some recommendations &mdash; this doesn&apos;t affect the price you pay.
+        </p>
+      </div>
 
       {/* Goal cards grid */}
       {goals.length === 0 ? (

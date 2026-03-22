@@ -1,0 +1,252 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-plus-jakarta-sans), 'Inter', sans-serif;
+  --font-heading: var(--font-dynapuff), 'DynaPuff', cursive;
+}
+
+/*
+  WealthMotley Dark Glass Theme
+  Primary: Amber #ffb347
+  Dark Orange: #e67e22
+  Muted: #968a84
+  Background: #0d0b0a
+  Glass: rgba(255,255,255,0.04)
+  Glass Border: rgba(255,255,255,0.08)
+*/
+
+:root {
+  --radius: 0.625rem;
+
+  /* DARK by default — the entire app uses dark glass */
+  --background: 20 20% 3.7%;
+  --foreground: 36 15% 90%;
+
+  --card: 20 15% 5.5%;
+  --card-foreground: 36 15% 90%;
+
+  --popover: 20 15% 5.5%;
+  --popover-foreground: 36 15% 90%;
+
+  --primary: 33 100% 64%;
+  --primary-foreground: 20 20% 3.7%;
+
+  --secondary: 20 15% 12%;
+  --secondary-foreground: 36 15% 90%;
+
+  --muted: 20 10% 10%;
+  --muted-foreground: 25 10% 55%;
+
+  --accent: 33 100% 64%;
+  --accent-foreground: 20 20% 3.7%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 160 60% 45%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 45 96% 55%;
+  --warning-foreground: 20 20% 3.7%;
+
+  --border: 0 0% 12%;
+  --input: 0 0% 12%;
+  --ring: 33 100% 64%;
+
+  --chart-1: 33 100% 64%;
+  --chart-2: 0 84% 60%;
+  --chart-3: 160 60% 45%;
+  --chart-4: 220 70% 50%;
+  --chart-5: 270 60% 60%;
+
+  --sidebar: 20 20% 3%;
+  --sidebar-foreground: 36 15% 90%;
+  --sidebar-primary: 33 100% 64%;
+  --sidebar-primary-foreground: 20 20% 3.7%;
+  --sidebar-accent: 20 10% 8%;
+  --sidebar-accent-foreground: 33 100% 64%;
+  --sidebar-border: 0 0% 8%;
+  --sidebar-ring: 33 100% 64%;
+}
+
+/* Dark class (same values — app is always dark) */
+.dark {
+  --background: 20 20% 3.7%;
+  --foreground: 36 15% 90%;
+  --card: 20 15% 5.5%;
+  --card-foreground: 36 15% 90%;
+  --popover: 20 15% 5.5%;
+  --popover-foreground: 36 15% 90%;
+  --primary: 33 100% 64%;
+  --primary-foreground: 20 20% 3.7%;
+  --secondary: 20 15% 12%;
+  --secondary-foreground: 36 15% 90%;
+  --muted: 20 10% 10%;
+  --muted-foreground: 25 10% 55%;
+  --accent: 33 100% 64%;
+  --accent-foreground: 20 20% 3.7%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 160 60% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 45 96% 55%;
+  --warning-foreground: 20 20% 3.7%;
+  --border: 0 0% 12%;
+  --input: 0 0% 12%;
+  --ring: 33 100% 64%;
+  --chart-1: 33 100% 64%;
+  --chart-2: 0 84% 60%;
+  --chart-3: 160 60% 45%;
+  --chart-4: 220 70% 50%;
+  --chart-5: 270 60% 60%;
+  --sidebar: 20 20% 2.7%;
+  --sidebar-foreground: 36 15% 90%;
+  --sidebar-primary: 33 100% 64%;
+  --sidebar-primary-foreground: 20 20% 3.7%;
+  --sidebar-accent: 20 10% 8%;
+  --sidebar-accent-foreground: 33 100% 64%;
+  --sidebar-border: 0 0% 8%;
+  --sidebar-ring: 33 100% 64%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background-color: #0d0b0a;
+    color: #e8e0d8;
+  }
+}
+
+/* ---- Dark Glass Design System ---- */
+
+.wm-glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.wm-glass-strong {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* DynaPuff heading */
+.wm-heading {
+  font-family: var(--font-dynapuff), 'DynaPuff', cursive;
+}
+
+/* JetBrains Mono labels */
+.wm-mono {
+  font-family: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Custom scrollbar */
+.wm-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.wm-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.wm-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+.wm-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ---- Animations ---- */
+
+@keyframes wm-typing {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes wm-slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wm-shine {
+  from { transform: translateX(-100%) skewX(-12deg); }
+  to { transform: translateX(200%) skewX(-12deg); }
+}
+
+@keyframes wm-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wm-message-enter {
+  animation: wm-slide-up 0.4s ease-out forwards;
+}
+
+/* Glass card hover */
+.landing-glass-card:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 179, 71, 0.2) !important;
+  box-shadow: 0 0 40px rgba(255, 179, 71, 0.04);
+  transform: translateY(-2px);
+}
+
+/* Gold shimmer */
+@keyframes gold-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.gold-shimmer-border {
+  background: linear-gradient(90deg, rgba(255,179,71,0.1) 0%, rgba(255,179,71,0.3) 50%, rgba(255,179,71,0.1) 100%);
+  background-size: 200% 100%;
+  animation: gold-shimmer 3s linear infinite;
+}
+
+/* Waitlist pulse */
+@keyframes waitlist-count-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.waitlist-count-pulse {
+  animation: waitlist-count-pulse 2s ease-in-out infinite;
+}

@@ -1,0 +1,54 @@
+/**
+ * Legal disclaimer text constants for WealthMotley.
+ *
+ * These are displayed alongside educational portfolio features
+ * to ensure users understand the nature of the content.
+ */
+
+export const GENERAL_DISCLAIMER =
+  "WealthMotley is a financial education platform. Nothing on this platform " +
+  "constitutes financial advice, investment advice, trading advice, or any " +
+  "other sort of advice. You should not treat any of the platform's content " +
+  "as such. WealthMotley does not recommend that any asset, security, or " +
+  "financial instrument be bought, sold, or held by you. Do your own due " +
+  "diligence and consult a licensed financial adviser before making any " +
+  "investment decision.";
+
+export const PORTFOLIO_DISCLAIMER =
+  "The portfolio tracker is an educational tool designed to help you " +
+  "understand how investments work. Any portfolio you build here is a " +
+  "simulated learning exercise. Past performance of any asset does not " +
+  "guarantee future results. The values shown may not reflect real-time " +
+  "market prices and should not be used to make actual investment decisions.";
+
+export const AI_SHOLZ_DISCLAIMER =
+  "Sholz is an AI-powered educational companion. The information provided " +
+  "by Sholz is for educational purposes only and should not be interpreted " +
+  "as personalised financial advice. Sholz may occasionally produce " +
+  "inaccurate information. Always verify important financial information " +
+  "with a qualified professional.";
+
+export const MARKET_DATA_DISCLAIMER =
+  "Market data is provided for educational and informational purposes only. " +
+  "Prices may be delayed and do not reflect real-time trading values. " +
+  "WealthMotley is not a broker, dealer, or registered investment adviser. " +
+  "We do not facilitate the purchase or sale of any securities.";
+
+export const SCREENSHOT_IMPORT_DISCLAIMER =
+  "The screenshot import feature uses AI to extract financial data from " +
+  "images you provide. The extracted data may contain errors. Always review " +
+  "and verify imported transactions before relying on them for budgeting or " +
+  "tracking purposes. WealthMotley does not store your bank screenshots " +
+  "after processing.";
+
+export const EARNINGS_DISCLAIMER =
+  "Any references to earnings, income, or financial gains on this platform " +
+  "are for educational illustration only. Individual results will vary. " +
+  "There is no guarantee that you will earn any money using the techniques, " +
+  "ideas, or information presented on this platform.";
+
+export const NIGERIAN_REGULATORY_NOTICE =
+  "WealthMotley is not regulated by the Securities and Exchange Commission " +
+  "(SEC) of Nigeria, the Central Bank of Nigeria (CBN), or any other " +
+  "financial regulatory body. This platform is strictly an educational tool " +
+  "and does not provide financial services as defined under Nigerian law.";

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useMono } from "@/hooks/use-mono";
 import { useEnsureUser } from "@/hooks/use-ensure-user";
@@ -1154,10 +1154,19 @@ export function WmOnboardingStepper() {
   }, [openMono]);
 
   const handleStep2Skip = useCallback(() => {
-    goToStep(3);
+    goToStep(2.5);
   }, [goToStep]);
 
   const handleStep2Continue = useCallback(() => {
+    goToStep(2.5);
+  }, [goToStep]);
+
+  // Step 2.5: Investment interstitial
+  const handleInvestmentSkip = useCallback(() => {
+    goToStep(3);
+  }, [goToStep]);
+
+  const handleInvestmentComplete = useCallback(() => {
     goToStep(3);
   }, [goToStep]);
 
@@ -1193,6 +1202,10 @@ export function WmOnboardingStepper() {
               Connect
             </span>
             <div style={currentStep >= 2 ? S.stepDotActive : S.stepDot} />
+            <span style={{ color: currentStep >= 2.5 ? COLORS.amber : COLORS.muted }}>
+              Invest
+            </span>
+            <div style={currentStep >= 2.5 ? S.stepDotActive : S.stepDot} />
             <span style={{ color: currentStep >= 3 ? COLORS.amber : COLORS.muted }}>
               Set Flow
             </span>
@@ -1240,6 +1253,12 @@ export function WmOnboardingStepper() {
             onConnect={handleStep2Connect}
             onSkip={handleStep2Skip}
             onContinue={handleStep2Continue}
+          />
+        )}
+        {currentStep === 2.5 && (
+          <Step25Investments
+            onSkip={handleInvestmentSkip}
+            onComplete={handleInvestmentComplete}
           />
         )}
         {currentStep === 3 && (
@@ -1645,6 +1664,389 @@ function Step2Connect({
           </div>
         </div>
       </section>
+    </>
+  );
+}
+
+// =============================================================================
+// STEP 2.5: INVESTMENTS (OPTIONAL)
+// =============================================================================
+
+const INVESTMENT_PLATFORMS = [
+  { name: "Trading 212", icon: "\uD83D\uDCC8" },
+  { name: "Cowrywise", icon: "\uD83D\uDCB0" },
+  { name: "Bamboo", icon: "\uD83C\uDF3F" },
+  { name: "eToro", icon: "\uD83C\uDF10" },
+  { name: "Risevest", icon: "\uD83D\uDE80" },
+  { name: "Other", icon: "\uD83D\uDCBC" },
+];
+
+function Step25Investments({
+  onSkip,
+  onComplete,
+}: {
+  onSkip: () => void;
+  onComplete: () => void;
+}) {
+  const [mode, setMode] = useState<"choice" | "screenshot" | "manual">("choice");
+  const [manualName, setManualName] = useState("");
+  const [manualPlatform, setManualPlatform] = useState("");
+  const [manualQty, setManualQty] = useState("");
+  const [manualPrice, setManualPrice] = useState("");
+  const [manualCurrency, setManualCurrency] = useState("USD");
+  const [isSaving, setIsSaving] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const addManualAsset = useMutation(api.allMyMoney.addManualAsset);
+  const generateUploadUrl = useMutation(api.screenshotImport.generateUploadUrl);
+  const createImportRecord = useMutation(api.screenshotImport.createImportRecord);
+  const analyzeScreenshot = useAction(api.screenshotImport.analyzeScreenshot);
+  const saveExtractedHoldings = useMutation(api.screenshotImport.saveExtractedHoldings);
+
+  const [screenshotState, setScreenshotState] = useState<"idle" | "uploading" | "processing" | "done" | "error">("idle");
+  const [screenshotError, setScreenshotError] = useState("");
+
+  const handleScreenshotUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setScreenshotState("uploading");
+
+    try {
+      const uploadUrl = await generateUploadUrl();
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const { storageId } = await res.json();
+      const recordId = await createImportRecord({ imageStorageId: storageId });
+      setScreenshotState("processing");
+
+      const result = await analyzeScreenshot({ imageStorageId: storageId, importId: recordId });
+
+      if (result.holdings.length > 0) {
+        await saveExtractedHoldings({
+          importId: recordId,
+          platform: result.platform,
+          holdings: result.holdings.map((h: any) => ({
+            name: h.name,
+            ticker: h.ticker || undefined,
+            quantity: h.quantity || undefined,
+            value: h.value,
+            currency: h.currency,
+          })),
+        });
+        setScreenshotState("done");
+        // Auto-proceed after brief delay
+        setTimeout(onComplete, 1500);
+      } else {
+        setScreenshotState("error");
+        setScreenshotError("No holdings found. Try a different screenshot or add manually.");
+      }
+    } catch (e: any) {
+      setScreenshotState("error");
+      setScreenshotError(e.message || "Failed to process screenshot");
+    }
+  }, [generateUploadUrl, createImportRecord, analyzeScreenshot, saveExtractedHoldings, onComplete]);
+
+  const handleManualSave = useCallback(async () => {
+    const qty = parseFloat(manualQty);
+    const price = parseFloat(manualPrice);
+    if (!manualName || isNaN(qty) || isNaN(price)) return;
+
+    setIsSaving(true);
+    try {
+      await addManualAsset({
+        name: manualPlatform ? `${manualPlatform} - ${manualName}` : manualName,
+        type: "investment",
+        platform: manualPlatform || undefined,
+        value: qty * price,
+        currency: manualCurrency,
+        holdings: [{
+          name: manualName,
+          quantity: qty,
+          value: qty * price,
+          currency: manualCurrency,
+        }],
+      });
+      onComplete();
+    } catch {
+      // non-critical
+      onComplete();
+    } finally {
+      setIsSaving(false);
+    }
+  }, [manualName, manualPlatform, manualQty, manualPrice, manualCurrency, addManualAsset, onComplete]);
+
+  return (
+    <>
+      {/* Left panel */}
+      <div style={S.setupPanel}>
+        <div style={S.onboardingHeader}>
+          <div style={S.sectionLabel}>Optional</div>
+          <h1 style={{ ...S.h1, fontSize: "2.5rem" }}>
+            Do you have investments elsewhere?
+          </h1>
+          <p style={S.subtitle}>
+            Track stocks, ETFs, and funds from any platform. This is optional &mdash; you can always do this later.
+          </p>
+        </div>
+
+        {mode === "choice" && (
+          <>
+            {/* Platform logos */}
+            <div style={{ display: "flex", flexWrap: "wrap" as const, gap: "10px", marginBottom: "28px" }}>
+              {INVESTMENT_PLATFORMS.map((p) => (
+                <div
+                  key={p.name}
+                  style={{
+                    background: COLORS.glass,
+                    border: `1px solid ${COLORS.glassBorder}`,
+                    borderRadius: "12px",
+                    padding: "10px 16px",
+                    fontSize: "0.8rem",
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>{p.icon}</span> {p.name}
+                </div>
+              ))}
+            </div>
+
+            {/* Upload screenshot button */}
+            <div style={S.inputCard}>
+              <div style={S.cardTitle}>
+                <span style={{ fontSize: "1.5rem" }}>{"\uD83D\uDCF8"}</span>
+                Upload a screenshot
+              </div>
+              <p style={{ ...S.subtitle, fontSize: "0.875rem", marginBottom: "16px" }}>
+                Screenshot your investment app and our AI will extract your holdings.
+              </p>
+              <label
+                style={{
+                  ...S.btnPill,
+                  background: "rgba(255, 179, 71, 0.15)",
+                  color: COLORS.amber,
+                  cursor: "pointer",
+                  textAlign: "center" as const,
+                  display: "block",
+                  position: "relative" as const,
+                }}
+              >
+                {screenshotState === "uploading" && "Uploading..."}
+                {screenshotState === "processing" && "AI is analyzing..."}
+                {screenshotState === "done" && "Holdings imported!"}
+                {screenshotState === "error" && "Try again"}
+                {screenshotState === "idle" && "Choose Screenshot"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{ position: "absolute" as const, opacity: 0, width: 0, height: 0 }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleScreenshotUpload(f);
+                  }}
+                  disabled={screenshotState === "uploading" || screenshotState === "processing"}
+                />
+              </label>
+              {screenshotState === "error" && (
+                <p style={{ color: "#ff4757", fontSize: "0.8rem", marginTop: "8px" }}>
+                  {screenshotError}
+                </p>
+              )}
+            </div>
+
+            {/* Manual add button */}
+            <button
+              type="button"
+              style={{
+                ...S.btnPill,
+                background: "transparent",
+                color: "#ffffff",
+                border: `1px solid ${COLORS.glassBorder}`,
+                marginTop: "0",
+              }}
+              onClick={() => setMode("manual")}
+            >
+              {"\u270F\uFE0F"} I&apos;ll add them manually
+            </button>
+
+            {/* Skip button */}
+            <button
+              type="button"
+              onClick={onSkip}
+              style={{
+                background: "none",
+                border: "none",
+                color: COLORS.muted,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.8rem",
+                cursor: "pointer",
+                marginTop: "20px",
+                display: "block",
+                width: "100%",
+                textAlign: "center" as const,
+              }}
+            >
+              Skip &mdash; I&apos;ll do this later
+            </button>
+          </>
+        )}
+
+        {mode === "manual" && (
+          <div style={S.inputCard}>
+            <div style={S.cardTitle}>
+              <span style={{ fontSize: "1.5rem" }}>{"\u270F\uFE0F"}</span>
+              Quick Add Investment
+            </div>
+            <div style={S.fieldGroup}>
+              <label style={S.fieldLabel}>Platform</label>
+              <select
+                style={S.formSelect}
+                value={manualPlatform}
+                onChange={(e) => setManualPlatform(e.target.value)}
+              >
+                <option value="">Select platform...</option>
+                {INVESTMENT_PLATFORMS.map((p) => (
+                  <option key={p.name} value={p.name}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div style={S.fieldGroup}>
+              <label style={S.fieldLabel}>Stock / ETF Name</label>
+              <input
+                style={focusedField === "name" ? S.formInputFocus : S.formInput}
+                placeholder="e.g. VOO, Apple, Cowrywise Dollar Fund"
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                onFocus={() => setFocusedField("name")}
+                onBlur={() => setFocusedField(null)}
+              />
+            </div>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ ...S.fieldGroup, flex: 1 }}>
+                <label style={S.fieldLabel}>Quantity</label>
+                <input
+                  style={focusedField === "qty" ? S.formInputFocus : S.formInput}
+                  type="number"
+                  placeholder="0"
+                  value={manualQty}
+                  onChange={(e) => setManualQty(e.target.value)}
+                  onFocus={() => setFocusedField("qty")}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </div>
+              <div style={{ ...S.fieldGroup, flex: 1 }}>
+                <label style={S.fieldLabel}>Price per share</label>
+                <input
+                  style={focusedField === "price" ? S.formInputFocus : S.formInput}
+                  type="number"
+                  placeholder="0.00"
+                  value={manualPrice}
+                  onChange={(e) => setManualPrice(e.target.value)}
+                  onFocus={() => setFocusedField("price")}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </div>
+            </div>
+            <div style={S.fieldGroup}>
+              <label style={S.fieldLabel}>Currency</label>
+              <select
+                style={S.formSelect}
+                value={manualCurrency}
+                onChange={(e) => setManualCurrency(e.target.value)}
+              >
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="NGN">NGN</option>
+                <option value="EUR">EUR</option>
+                <option value="CAD">CAD</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              style={S.btnPill}
+              onClick={handleManualSave}
+              disabled={isSaving || !manualName || !manualQty || !manualPrice}
+            >
+              {isSaving ? "Saving..." : "Add & Continue"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("choice")}
+              style={{
+                background: "none",
+                border: "none",
+                color: COLORS.muted,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.8rem",
+                cursor: "pointer",
+                marginTop: "12px",
+                display: "block",
+                width: "100%",
+                textAlign: "center" as const,
+              }}
+            >
+              Back
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Right panel - Visual */}
+      <div style={S.visualContainer}>
+        <div style={{ ...S.mascotContainer, width: "400px", height: "400px" }}>
+          {/* Investment visualization */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                width: "280px",
+                height: "280px",
+                borderRadius: "50%",
+                background: "rgba(255, 179, 71, 0.08)",
+                border: `1px dashed ${COLORS.glassBorder}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  width: "140px",
+                  height: "140px",
+                  borderRadius: "50%",
+                  background: COLORS.amber,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "4rem",
+                  boxShadow: "0 0 60px rgba(255, 179, 71, 0.12)",
+                }}
+              >
+                {"\uD83D\uDCC8"}
+              </div>
+            </div>
+          </div>
+          {/* Floating chips */}
+          <div style={{ ...S.chip, top: "20px", right: "10px" }}>VOO +12.4%</div>
+          <div style={{ ...S.chip, bottom: "60px", left: "0px" }}>AAPL $227</div>
+          <div style={{ ...S.chip, top: "60px", left: "10px" }}>VTI +11.8%</div>
+          <div style={{ ...S.chip, bottom: "20px", right: "20px" }}>QQQ +18.2%</div>
+        </div>
+      </div>
     </>
   );
 }

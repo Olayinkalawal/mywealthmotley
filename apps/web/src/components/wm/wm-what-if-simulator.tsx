@@ -18,7 +18,7 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { TrendUp, Calculator, Coins } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatCompactCurrency } from "@/lib/currencies";
+import { formatCurrency, formatCompactCurrency, getCurrencySymbol } from "@/lib/currencies";
 import { WmDisclaimer } from "./wm-disclaimer";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -237,7 +237,7 @@ function WmWhatIfSimulator({ isLoading = false, className }: WmWhatIfSimulatorPr
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Monthly Investment</label>
               <Badge variant="outline" className="font-mono text-xs">
-                {currency === "NGN" ? "\u20A6" : "$"}
+                {getCurrencySymbol(currency)}
                 {formatSliderValue(
                   currency === "NGN"
                     ? monthlyInvestment
@@ -253,8 +253,8 @@ function WmWhatIfSimulator({ isLoading = false, className }: WmWhatIfSimulatorPr
               step={5_000}
             />
             <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>{currency === "NGN" ? "\u20A610K" : "$6"}</span>
-              <span>{currency === "NGN" ? "\u20A6500K" : "$323"}</span>
+              <span>{formatCompactCurrency(currency === "NGN" ? 10000 : 6, currency)}</span>
+              <span>{formatCompactCurrency(currency === "NGN" ? 500000 : 323, currency)}</span>
             </div>
           </div>
 

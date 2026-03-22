@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/use-currency";
 import type { AiTone } from "@/lib/ai-prompts";
 import { useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -149,9 +150,11 @@ function MessageActions({
 function MathModal({
   isOpen,
   onClose,
+  fmtCurr,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  fmtCurr: (n: number) => string;
 }) {
   if (!isOpen) return null;
   return (
@@ -184,11 +187,11 @@ function MathModal({
         <div className="space-y-3 wm-mono text-sm">
           <div className="flex justify-between items-center border-b border-white/5 pb-2">
             <span className="text-white/60">iPhone 15 Pro Cost</span>
-            <span className="text-red-400">N420,000</span>
+            <span className="text-red-400">{fmtCurr(420000)}</span>
           </div>
           <div className="flex justify-between items-center border-b border-white/5 pb-2">
             <span className="text-white/60">Monthly Japa Contribution</span>
-            <span className="text-blue-400">N210,000</span>
+            <span className="text-blue-400">{fmtCurr(210000)}</span>
           </div>
           <div className="flex justify-between items-center border-b border-white/5 pb-2">
             <span className="text-white/60">Months of Japa Fund Lost</span>
@@ -213,9 +216,13 @@ function MathModal({
 function ChatSidebar({
   roastLevel,
   setRoastLevel,
+  fmtCurr,
+  fmtCompact,
 }: {
   roastLevel: number;
   setRoastLevel: (n: number) => void;
+  fmtCurr: (n: number) => string;
+  fmtCompact: (n: number) => string;
 }) {
   return (
     <aside
@@ -243,7 +250,7 @@ function ChatSidebar({
             <p className="wm-mono text-[10px] text-[#968a84] uppercase tracking-widest mb-1">
               Current Balance
             </p>
-            <p className="wm-mono text-3xl text-white font-bold">N245,000</p>
+            <p className="wm-mono text-3xl text-white font-bold">{fmtCurr(245000)}</p>
           </div>
           <div className="bg-black/20 rounded-xl p-4 border border-white/5">
             <div className="flex justify-between items-end mb-2">
@@ -259,8 +266,8 @@ function ChatSidebar({
               />
             </div>
             <div className="flex justify-between wm-mono text-[10px] text-white/50">
-              <span>N1.2M spent</span>
-              <span>N1.5M budget</span>
+              <span>{fmtCompact(1200000)} spent</span>
+              <span>{fmtCompact(1500000)} budget</span>
             </div>
           </div>
           <div className="bg-blue-500/5 rounded-xl p-4 border border-blue-500/20">
@@ -292,7 +299,7 @@ function ChatSidebar({
               </div>
             </div>
             <p className="wm-mono text-[10px] text-white/50 text-right">
-              N2.3M / N5.3M
+              {fmtCompact(2300000)} / {fmtCompact(5300000)}
             </p>
           </div>
           <div className="flex justify-between items-center py-2 border-t border-white/5">
@@ -305,7 +312,7 @@ function ChatSidebar({
               </span>
             </div>
             <span className="wm-mono text-sm text-purple-400 font-medium">
-              N180K
+              {fmtCompact(180000)}
             </span>
           </div>
         </div>
@@ -371,21 +378,21 @@ function ChatSidebar({
               emoji: "\uD83C\uDF54",
               name: "Chowdeck",
               time: "Today, 2:30 PM",
-              amount: "-N12,500",
+              amount: `-${fmtCurr(12500)}`,
               positive: false,
             },
             {
               emoji: "\uD83D\uDCF1",
               name: "MTN Airtime",
               time: "Yesterday",
-              amount: "-N5,000",
+              amount: `-${fmtCurr(5000)}`,
               positive: false,
             },
             {
               emoji: "\uD83D\uDCBC",
               name: "Salary",
               time: "Aug 25",
-              amount: "+N850,000",
+              amount: `+${fmtCurr(850000)}`,
               positive: true,
             },
           ].map((tx) => (
@@ -429,6 +436,7 @@ function ChatSidebar({
 // ── Main Page ───────────────────────────────────────────────────────────
 
 export default function SholzPage() {
+  const { format: fmtCurr, formatCompact: fmtCompact } = useCurrency();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -576,6 +584,7 @@ export default function SholzPage() {
       <MathModal
         isOpen={mathModalOpen}
         onClose={() => setMathModalOpen(false)}
+        fmtCurr={fmtCurr}
       />
 
       {/* Chat section */}
@@ -1003,7 +1012,7 @@ export default function SholzPage() {
         </footer>
       </section>
 
-      <ChatSidebar roastLevel={roastLevel} setRoastLevel={setRoastLevel} />
+      <ChatSidebar roastLevel={roastLevel} setRoastLevel={setRoastLevel} fmtCurr={fmtCurr} fmtCompact={fmtCompact} />
     </div>
   );
 }

@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SUPPORTED_COUNTRIES, type CurrencyCode } from "@/lib/constants";
+import { useMutation, useQuery, useConvexAuth } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 const CURRENCY_STORAGE_KEY = "wm-preferred-currency";
 
@@ -25,8 +27,8 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   ZAR: "R",
 };
 
-function getStoredCurrency(): CurrencyCode {
-  if (typeof window === "undefined") return "NGN";
+function getStoredCurrency(): CurrencyCode | null {
+  if (typeof window === "undefined") return null;
   try {
     const stored = localStorage.getItem(CURRENCY_STORAGE_KEY);
     if (stored && SUPPORTED_COUNTRIES.some((c) => c.currency === stored)) {
@@ -35,17 +37,35 @@ function getStoredCurrency(): CurrencyCode {
   } catch {
     // localStorage not available
   }
-  return "NGN";
+  return null;
 }
 
 export function WmCurrencySelector() {
   const [currency, setCurrency] = React.useState<CurrencyCode>("NGN");
   const [mounted, setMounted] = React.useState(false);
 
+  const { isAuthenticated } = useConvexAuth();
+  const user = useQuery(api.users.getUser, isAuthenticated ? {} : "skip");
+  const updatePrefs = useMutation(api.users.updateUserPreferences);
+
+  // On mount: prefer localStorage, then fall back to the Convex user currency
   React.useEffect(() => {
-    setCurrency(getStoredCurrency());
+    const stored = getStoredCurrency();
+    if (stored) {
+      setCurrency(stored);
+    } else if (user?.currency) {
+      const userCurrency = user.currency as CurrencyCode;
+      setCurrency(userCurrency);
+      // Seed localStorage from Convex so all hooks pick it up
+      try {
+        localStorage.setItem(CURRENCY_STORAGE_KEY, userCurrency);
+        window.dispatchEvent(new Event("wm-currency-changed"));
+      } catch {
+        // localStorage not available
+      }
+    }
     setMounted(true);
-  }, []);
+  }, [user?.currency]);
 
   const handleChange = (value: string) => {
     const newCurrency = value as CurrencyCode;
@@ -55,12 +75,27 @@ export function WmCurrencySelector() {
     } catch {
       // localStorage not available
     }
+    // Dispatch custom event so useCurrency hooks in the same tab update
+    window.dispatchEvent(new Event("wm-currency-changed"));
+
+    // Also persist to Convex user profile (fire-and-forget)
+    if (isAuthenticated) {
+      const matchingCountry = SUPPORTED_COUNTRIES.find(
+        (c) => c.currency === newCurrency,
+      );
+      updatePrefs({
+        currency: newCurrency,
+        ...(matchingCountry ? { country: matchingCountry.code } : {}),
+      }).catch(() => {
+        // Convex update failed silently
+      });
+    }
   };
 
   if (!mounted) {
     return (
       <div className="flex h-9 w-[110px] items-center rounded-md border border-input bg-transparent px-3 py-2 text-sm">
-        <span className="opacity-50">NGN</span>
+        <span className="opacity-50">...</span>
       </div>
     );
   }

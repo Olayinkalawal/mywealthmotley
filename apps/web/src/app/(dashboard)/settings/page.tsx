@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/use-currency";
 
 // ── Toggle Component ────────────────────────────────────────────────────
 
@@ -145,11 +146,15 @@ function PreferencesTab() {
           onChange={(e) => setCurrency(e.target.value)}
           className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:border-[#ffb347]/50 focus:outline-none focus:bg-black/40 transition-all wm-mono text-sm cursor-pointer shadow-inner appearance-none"
         >
-          <option value="NGN" className="bg-[#0d0b0a]">Naira (N)</option>
+          <option value="NGN" className="bg-[#0d0b0a]">NGN (\u20A6)</option>
           <option value="USD" className="bg-[#0d0b0a]">USD ($)</option>
-          <option value="GBP" className="bg-[#0d0b0a]">GBP (P)</option>
-          <option value="EUR" className="bg-[#0d0b0a]">EUR (E)</option>
+          <option value="GBP" className="bg-[#0d0b0a]">GBP (\u00A3)</option>
+          <option value="EUR" className="bg-[#0d0b0a]">EUR (\u20AC)</option>
           <option value="CAD" className="bg-[#0d0b0a]">CAD (C$)</option>
+          <option value="AED" className="bg-[#0d0b0a]">AED</option>
+          <option value="GHS" className="bg-[#0d0b0a]">GHS (GH\u20B5)</option>
+          <option value="KES" className="bg-[#0d0b0a]">KES (KSh)</option>
+          <option value="ZAR" className="bg-[#0d0b0a]">ZAR (R)</option>
         </select>
         <p className="wm-mono text-[10px] text-[#968a84] mt-2 pl-1">This affects how balances and goals are displayed.</p>
       </div>
@@ -471,6 +476,7 @@ function PrivacyTab() {
 // ── Billing Tab ─────────────────────────────────────────────────────────
 
 function BillingTab() {
+  const { format: fmtCurr } = useCurrency();
   return (
     <div className="space-y-10 relative z-10">
       <div className="rounded-[24px] p-8 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1a130c, #0d0b0a)", border: "1px solid rgba(255,179,71,0.3)", boxShadow: "0 0 20px rgba(255,179,71,0.15)" }}>
@@ -481,7 +487,7 @@ function BillingTab() {
               <h3 className="wm-heading text-2xl text-white">Puff Premium</h3>
               <span className="wm-mono text-[10px] uppercase tracking-wider bg-[#ffb347]/20 text-[#ffb347] px-2 py-0.5 rounded border border-[#ffb347]/30">Active</span>
             </div>
-            <p className="wm-mono text-xl text-white font-bold tracking-tight mb-1">N2,500<span className="text-sm text-[#968a84] font-normal"> / month</span></p>
+            <p className="wm-mono text-xl text-white font-bold tracking-tight mb-1">{fmtCurr(2500)}<span className="text-sm text-[#968a84] font-normal"> / month</span></p>
             <p className="wm-mono text-[10px] text-[#968a84] uppercase tracking-widest">Renews Dec 31, 2025</p>
           </div>
           <button className="px-6 py-2.5 bg-[#ffb347] hover:bg-[#e67e22] text-[#0d0b0a] wm-mono text-xs uppercase tracking-wider font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(255,179,71,0.15)] whitespace-nowrap">
@@ -531,7 +537,7 @@ function BillingTab() {
               </tr>
             </thead>
             <tbody className="wm-mono text-xs text-white">
-              {[{ date: "Nov 1, 2025", amount: "N2,500" }, { date: "Oct 1, 2025", amount: "N2,500" }, { date: "Sep 1, 2025", amount: "N2,500" }].map((row, i, arr) => (
+              {[{ date: "Nov 1, 2025", amount: fmtCurr(2500) }, { date: "Oct 1, 2025", amount: fmtCurr(2500) }, { date: "Sep 1, 2025", amount: fmtCurr(2500) }].map((row, i, arr) => (
                 <tr key={row.date} className={cn("hover:bg-white/[0.02] transition-colors", i < arr.length - 1 && "border-b border-white/5")}>
                   <td className="py-4 px-5">{row.date}</td>
                   <td className="py-4 px-5">{row.amount}</td>

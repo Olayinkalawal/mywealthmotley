@@ -6,6 +6,8 @@ import { api } from "../../../../convex/_generated/api";
 import { MOCK_BUDGET, MOCK_TRANSACTIONS } from "@/lib/mock-data";
 import type { Budget, Transaction, BudgetCategory } from "@/lib/mock-data";
 import { WmCreateBudgetDialog } from "@/components/wm/wm-create-budget-dialog";
+import { useCurrency } from "@/hooks/use-currency";
+import { formatCurrency, formatCompactCurrency, getCurrencySymbol } from "@/lib/currencies";
 
 /* ── Inline CSS animations (injected once) ─────────────────────────── */
 const BUDGET_KEYFRAMES = `
@@ -264,7 +266,7 @@ function AddCategoryModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
             />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-wider mb-2" style={{ fontFamily: "JetBrains Mono, monospace", color: "#968a84" }}>Budget Limit (N)</label>
+            <label className="block text-xs uppercase tracking-wider mb-2" style={{ fontFamily: "JetBrains Mono, monospace", color: "#968a84" }}>Budget Limit</label>
             <input
               type="number"
               value={budget}
@@ -330,13 +332,12 @@ function adaptTransactions(convexTransactions: any[]): Transaction[] {
   }));
 }
 
-/* ── Format helpers ─────────────────────────────────────────────────── */
-function fmtNaira(n: number): string {
-  if (Math.abs(n) >= 1000) return `\u20A6${Math.round(Math.abs(n) / 1000).toLocaleString()}K`;
-  return `\u20A6${Math.abs(n).toLocaleString()}`;
+/* ── Format helpers (currency-aware) ────────────────────────────────── */
+function fmtCompact(n: number, curr: string): string {
+  return formatCompactCurrency(Math.abs(n), curr);
 }
-function fmtFull(n: number): string {
-  return `\u20A6${Math.abs(n).toLocaleString()}`;
+function fmtFull(n: number, curr: string): string {
+  return formatCurrency(Math.abs(n), curr);
 }
 
 /* ── Default category configs ───────────────────────────────────────── */
@@ -377,6 +378,7 @@ export default function BudgetPage() {
   const { isAuthenticated } = useConvexAuth();
   const convexBudget = useQuery(api.budgets.getCurrentBudget, isAuthenticated ? {} : "skip");
   const convexTransactions = useQuery(api.transactions.getTransactions, isAuthenticated ? {} : "skip");
+  const { currency: userCurrency, symbol: currSymbol } = useCurrency();
 
   const isLoading = convexBudget === undefined || convexTransactions === undefined;
   const [showAll, setShowAll] = useState(false);
@@ -636,7 +638,7 @@ export default function BudgetPage() {
             <div className="flex flex-col">
               <div className="text-xs uppercase mb-1" style={{ fontFamily: "JetBrains Mono, monospace", color: "#968a84" }}>Total Budget</div>
               <div className="text-3xl font-bold text-white flex items-baseline gap-1" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-                <span className="text-xl" style={{ color: "#ffb347" }}>{"\u20A6"}</span>{budget.totalIncome.toLocaleString()}
+                <span className="text-xl" style={{ color: "#ffb347" }}>{currSymbol}</span>{budget.totalIncome.toLocaleString()}
               </div>
             </div>
           </div>
@@ -658,8 +660,8 @@ export default function BudgetPage() {
                 <div className="flex-1 w-full">
                   <h2 className="text-4xl md:text-5xl mb-6 leading-tight" style={{ fontFamily: "DynaPuff, cursive" }}>
                     You&apos;ve spent <br />
-                    <span className="text-white" style={{ textShadow: "0 0 15px rgba(255,179,71,0.3)" }}>{fmtNaira(budget.totalSpent)}</span>{" "}
-                    <span style={{ color: "#968a84", fontSize: "1.5rem" }}>of {fmtNaira(budget.totalIncome)}</span>
+                    <span className="text-white" style={{ textShadow: "0 0 15px rgba(255,179,71,0.3)" }}>{fmtCompact(budget.totalSpent, userCurrency)}</span>{" "}
+                    <span style={{ color: "#968a84", fontSize: "1.5rem" }}>of {fmtCompact(budget.totalIncome, userCurrency)}</span>
                   </h2>
                   <div className="mb-4">
                     <div
@@ -683,7 +685,7 @@ export default function BudgetPage() {
                     </div>
                     <div className="text-sm flex items-center gap-2" style={{ fontFamily: "JetBrains Mono, monospace", color: "#2ed573" }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-                      {fmtFull(remaining)} left this month
+                      {fmtFull(remaining, userCurrency)} left this month
                     </div>
                   </div>
                 </div>
@@ -773,7 +775,7 @@ export default function BudgetPage() {
                   ))}
                   <g transform="translate(800, 30)">
                     <rect x="-45" y="-35" width="90" height="28" rx="14" fill="rgba(255,179,71,0.15)" stroke="#ffb347" strokeWidth="1" />
-                    <text x="0" y="-16" fill="#ffffff" fontFamily="JetBrains Mono, monospace" fontSize="13" textAnchor="middle" fontWeight="bold">{fmtNaira(budget.totalSpent / 7)}</text>
+                    <text x="0" y="-16" fill="#ffffff" fontFamily="JetBrains Mono, monospace" fontSize="13" textAnchor="middle" fontWeight="bold">{fmtCompact(budget.totalSpent / 7, userCurrency)}</text>
                   </g>
                 </svg>
                 <div className="flex justify-between items-center mt-4 px-2 text-xs" style={{ fontFamily: "JetBrains Mono, monospace", color: "#968a84" }}>
@@ -801,7 +803,7 @@ export default function BudgetPage() {
                     initial={tx.merchant ? tx.merchant[0]!.toUpperCase() : tx.narration[0]!.toUpperCase()}
                     name={tx.merchant || tx.narration}
                     category={tx.category.replace(/_/g, " ")}
-                    amount={`${tx.amount < 0 ? "-" : ""}${fmtFull(tx.amount)}`}
+                    amount={`${tx.amount < 0 ? "-" : ""}${fmtFull(tx.amount, userCurrency)}`}
                     date={new Date(tx.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     color={CATEGORY_COLORS[tx.category] ?? "#ffb347"}
                   />
@@ -821,8 +823,8 @@ export default function BudgetPage() {
                   key={cat.id}
                   icon={CATEGORY_ICONS[cat.id] || CATEGORY_ICONS.food}
                   name={cat.name}
-                  spent={fmtFull(cat.spent)}
-                  total={fmtNaira(cat.allocated)}
+                  spent={fmtFull(cat.spent, userCurrency)}
+                  total={fmtCompact(cat.allocated, userCurrency)}
                   percent={pct}
                   color={CATEGORY_COLORS[cat.id] ?? cat.color}
                   alert={pct >= 90}
@@ -842,8 +844,8 @@ export default function BudgetPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="font-bold text-white">{cat.name}</div>
                     <div className="text-right">
-                      <div className="font-bold" style={{ fontFamily: "JetBrains Mono, monospace", color: pct >= 90 ? "#ff4757" : "#ffffff" }}>{fmtFull(cat.spent)}</div>
-                      <div className="text-xs" style={{ fontFamily: "JetBrains Mono, monospace", color: "#968a84" }}>of {fmtNaira(cat.allocated)}</div>
+                      <div className="font-bold" style={{ fontFamily: "JetBrains Mono, monospace", color: pct >= 90 ? "#ff4757" : "#ffffff" }}>{fmtFull(cat.spent, userCurrency)}</div>
+                      <div className="text-xs" style={{ fontFamily: "JetBrains Mono, monospace", color: "#968a84" }}>of {fmtCompact(cat.allocated, userCurrency)}</div>
                     </div>
                   </div>
                   <AnimatedBar percent={pct} color={CATEGORY_COLORS[cat.id] ?? cat.color} glow={CATEGORY_COLORS[cat.id] ?? cat.color} height={10} />

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useMutation, useAction } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,27 +26,27 @@ import {
   Image as ImageIcon,
   PencilSimple,
   DeviceMobile,
+  Warning,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currencies";
 import { WmDisclaimer } from "./wm-disclaimer";
-import {
-  SCREENSHOT_IMPORT_DISCLAIMER,
-} from "@/lib/disclaimers";
+import { SCREENSHOT_IMPORT_DISCLAIMER } from "@/lib/disclaimers";
+import { toast } from "sonner";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 // ── Types ───────────────────────────────────────────────────────────
 interface ExtractedHolding {
   id: string;
   name: string;
   ticker: string;
-  quantity: number;
+  quantity: number | null;
   value: number;
   currency: string;
-  platform: string;
   isEditing: boolean;
 }
 
-type ImportState = "idle" | "uploading" | "processing" | "review" | "confirmed";
+type ImportState = "idle" | "uploading" | "processing" | "review" | "confirmed" | "error";
 
 // ── Supported Platforms ─────────────────────────────────────────────
 const SUPPORTED_PLATFORMS = [
@@ -56,50 +58,6 @@ const SUPPORTED_PLATFORMS = [
   { name: "ARM Pension", color: "hsl(19.6, 33.3%, 27.1%)" },
   { name: "NLPC Pension", color: "hsl(41.8, 62.8%, 54.7%)" },
   { name: "Any investment app", color: "hsl(280, 30%, 55%)" },
-];
-
-// ── Mock extracted data ─────────────────────────────────────────────
-const MOCK_EXTRACTED_DATA: ExtractedHolding[] = [
-  {
-    id: "ext-1",
-    name: "Cowrywise Dollar Fund",
-    ticker: "",
-    quantity: 1,
-    value: 450_000,
-    currency: "NGN",
-    platform: "Cowrywise",
-    isEditing: false,
-  },
-  {
-    id: "ext-2",
-    name: "Cowrywise Regular Plan",
-    ticker: "",
-    quantity: 1,
-    value: 320_000,
-    currency: "NGN",
-    platform: "Cowrywise",
-    isEditing: false,
-  },
-  {
-    id: "ext-3",
-    name: "Apple Inc.",
-    ticker: "AAPL",
-    quantity: 3,
-    value: 680,
-    currency: "USD",
-    platform: "Trading 212",
-    isEditing: false,
-  },
-  {
-    id: "ext-4",
-    name: "Vanguard S&P 500",
-    ticker: "VUSA",
-    quantity: 8,
-    value: 1_400,
-    currency: "USD",
-    platform: "Trading 212",
-    isEditing: false,
-  },
 ];
 
 // ── Skeleton ────────────────────────────────────────────────────────
@@ -124,34 +82,113 @@ function WmScreenshotImportSkeleton() {
 interface WmScreenshotImportProps {
   isLoading?: boolean;
   className?: string;
+  onComplete?: () => void;
 }
 
-function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImportProps) {
+function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScreenshotImportProps) {
   const [state, setState] = useState<ImportState>("idle");
   const [holdings, setHoldings] = useState<ExtractedHolding[]>([]);
+  const [detectedPlatform, setDetectedPlatform] = useState("Unknown");
   const [dragActive, setDragActive] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [importId, setImportId] = useState<Id<"screenshotImports"> | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = useCallback(() => {
-    setState("uploading");
+  // Convex mutations and actions
+  const generateUploadUrl = useMutation(api.screenshotImport.generateUploadUrl);
+  const createImportRecord = useMutation(api.screenshotImport.createImportRecord);
+  const analyzeScreenshot = useAction(api.screenshotImport.analyzeScreenshot);
+  const saveExtractedHoldings = useMutation(api.screenshotImport.saveExtractedHoldings);
 
-    // Simulate upload -> processing -> result
-    setTimeout(() => {
-      setState("processing");
-      setTimeout(() => {
-        setHoldings(MOCK_EXTRACTED_DATA.map((h) => ({ ...h })));
+  const processFile = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image file (PNG, JPG, or WEBP)");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("File too large. Maximum size is 10MB.");
+        return;
+      }
+
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewUrl(e.target?.result as string);
+      reader.readAsDataURL(file);
+
+      setState("uploading");
+      setErrorMessage("");
+
+      try {
+        // 1. Get upload URL from Convex
+        const uploadUrl = await generateUploadUrl();
+
+        // 2. Upload the file to Convex storage
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload image");
+        }
+
+        const { storageId } = await uploadResponse.json();
+
+        // 3. Create import record
+        const recordId = await createImportRecord({ imageStorageId: storageId });
+        setImportId(recordId);
+
+        // 4. Process with AI
+        setState("processing");
+        const result = await analyzeScreenshot({
+          imageStorageId: storageId,
+          importId: recordId,
+        });
+
+        // 5. Show results for review
+        if (result.holdings.length === 0) {
+          setState("error");
+          setErrorMessage(
+            "No investment holdings could be detected in this image. Please make sure the screenshot shows your portfolio or investment list."
+          );
+          return;
+        }
+
+        setDetectedPlatform(result.platform);
+        setHoldings(
+          result.holdings.map((h: any, idx: number) => ({
+            id: `ext-${idx}`,
+            name: h.name,
+            ticker: h.ticker || "",
+            quantity: h.quantity,
+            value: h.value,
+            currency: h.currency,
+            isEditing: false,
+          }))
+        );
         setState("review");
-      }, 2000);
-    }, 500);
-  }, []);
+      } catch (error: any) {
+        console.error("Screenshot import error:", error);
+        setState("error");
+        setErrorMessage(
+          error.message || "Something went wrong while analyzing your screenshot. Please try again."
+        );
+      }
+    },
+    [generateUploadUrl, createImportRecord, analyzeScreenshot]
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragActive(false);
-      handleUpload();
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
     },
-    [handleUpload],
+    [processFile]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -169,39 +206,67 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files?.length) {
-        handleUpload();
-      }
+      const file = e.target.files?.[0];
+      if (file) processFile(file);
+      // Reset input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
     },
-    [handleUpload],
+    [processFile]
   );
 
   const toggleEdit = useCallback((id: string) => {
     setHoldings((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, isEditing: !h.isEditing } : h)),
+      prev.map((h) => (h.id === id ? { ...h, isEditing: !h.isEditing } : h))
     );
   }, []);
 
   const updateHolding = useCallback(
-    (id: string, field: keyof ExtractedHolding, value: string | number) => {
+    (id: string, field: keyof ExtractedHolding, value: string | number | null) => {
       setHoldings((prev) =>
-        prev.map((h) => (h.id === id ? { ...h, [field]: value } : h)),
+        prev.map((h) => (h.id === id ? { ...h, [field]: value } : h))
       );
     },
-    [],
+    []
   );
 
   const removeHolding = useCallback((id: string) => {
     setHoldings((prev) => prev.filter((h) => h.id !== id));
   }, []);
 
-  const handleConfirm = useCallback(() => {
-    setState("confirmed");
-  }, []);
+  const handleConfirm = useCallback(async () => {
+    if (!importId || holdings.length === 0) return;
+
+    try {
+      await saveExtractedHoldings({
+        importId,
+        platform: detectedPlatform,
+        holdings: holdings.map((h) => ({
+          name: h.name,
+          ticker: h.ticker || undefined,
+          quantity: h.quantity || undefined,
+          value: h.value,
+          currency: h.currency,
+        })),
+      });
+
+      setState("confirmed");
+      toast.success(
+        `${holdings.length} holding${holdings.length !== 1 ? "s" : ""} imported from ${detectedPlatform} -- net worth updated!`
+      );
+      onComplete?.();
+    } catch (error: any) {
+      toast.error("Failed to save holdings. Please try again.");
+      console.error("Save error:", error);
+    }
+  }, [importId, holdings, detectedPlatform, saveExtractedHoldings, onComplete]);
 
   const handleReset = useCallback(() => {
     setState("idle");
     setHoldings([]);
+    setDetectedPlatform("Unknown");
+    setErrorMessage("");
+    setImportId(null);
+    setPreviewUrl(null);
   }, []);
 
   if (isLoading) {
@@ -288,8 +353,9 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
         </div>
       </div>
 
-      {/* Upload Zone */}
+      {/* State Machine UI */}
       <AnimatePresence mode="wait">
+        {/* Upload Zone */}
         {(state === "idle" || state === "uploading") && (
           <motion.div
             key="upload"
@@ -298,7 +364,7 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
             exit={{ opacity: 0, y: -10 }}
           >
             <div
-              onClick={handleFileClick}
+              onClick={state === "idle" ? handleFileClick : undefined}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -307,20 +373,21 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                 dragActive
                   ? "border-secondary bg-secondary/5"
                   : "border-border hover:border-secondary/50 hover:bg-muted/30",
-                state === "uploading" && "pointer-events-none opacity-60",
+                state === "uploading" && "pointer-events-none opacity-60"
               )}
             >
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 className="hidden"
                 onChange={handleFileChange}
               />
               {state === "uploading" ? (
                 <div className="flex flex-col items-center gap-3">
                   <SpinnerGap className="size-10 animate-spin text-secondary" />
-                  <p className="text-sm font-medium">Uploading...</p>
+                  <p className="text-sm font-medium">Uploading screenshot...</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3">
@@ -335,6 +402,20 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                       PNG, JPG, or WEBP. Max 10MB.
                     </p>
                   </div>
+                  {/* Mobile camera button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="sm:hidden"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    <Camera className="mr-1.5 size-4" />
+                    Take Photo
+                  </Button>
                 </div>
               )}
             </div>
@@ -352,16 +433,53 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
           >
             <Card>
               <CardContent className="flex flex-col items-center gap-4 py-10">
+                {previewUrl && (
+                  <div className="mb-2 overflow-hidden rounded-lg border">
+                    <img
+                      src={previewUrl}
+                      alt="Uploaded screenshot"
+                      className="max-h-48 w-auto object-contain"
+                    />
+                  </div>
+                )}
                 <div className="relative">
                   <SpinnerGap className="size-12 animate-spin text-secondary" />
                 </div>
                 <div className="text-center">
-                  <p className="font-semibold">Processing your screenshot...</p>
+                  <p className="font-semibold">Analyzing your screenshot...</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Our AI is extracting your investment holdings. This usually
-                    takes a few seconds.
+                    takes 5-15 seconds.
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Error State */}
+        {state === "error" && (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mx-auto max-w-xl"
+          >
+            <Card>
+              <CardContent className="flex flex-col items-center gap-4 py-10">
+                <div className="flex size-16 items-center justify-center rounded-full bg-destructive/10">
+                  <Warning className="size-8 text-destructive" />
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold">Could not process screenshot</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {errorMessage}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleReset}>
+                  Try Again
+                </Button>
               </CardContent>
             </Card>
           </motion.div>
@@ -377,15 +495,32 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
           >
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
-                  Review Extracted Holdings
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-base">
+                    Review Extracted Holdings
+                  </CardTitle>
+                  {detectedPlatform && detectedPlatform !== "Unknown" && (
+                    <Badge variant="secondary" className="text-xs">
+                      {detectedPlatform}
+                    </Badge>
+                  )}
+                </div>
                 <CardDescription>
                   Please verify the data below. Click the edit icon to make
                   corrections before saving.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {previewUrl && (
+                  <div className="mx-auto mb-4 overflow-hidden rounded-lg border">
+                    <img
+                      src={previewUrl}
+                      alt="Uploaded screenshot"
+                      className="max-h-32 w-auto object-contain"
+                    />
+                  </div>
+                )}
+
                 <div className="overflow-x-auto rounded-lg border">
                   <Table>
                     <TableHeader>
@@ -395,7 +530,6 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                         <TableHead>Qty</TableHead>
                         <TableHead>Value</TableHead>
                         <TableHead>Currency</TableHead>
-                        <TableHead>Platform</TableHead>
                         <TableHead className="w-[80px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -407,11 +541,7 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                               <Input
                                 value={holding.name}
                                 onChange={(e) =>
-                                  updateHolding(
-                                    holding.id,
-                                    "name",
-                                    e.target.value,
-                                  )
+                                  updateHolding(holding.id, "name", e.target.value)
                                 }
                                 className="h-7 text-xs"
                               />
@@ -426,11 +556,7 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                               <Input
                                 value={holding.ticker}
                                 onChange={(e) =>
-                                  updateHolding(
-                                    holding.id,
-                                    "ticker",
-                                    e.target.value,
-                                  )
+                                  updateHolding(holding.id, "ticker", e.target.value)
                                 }
                                 className="h-7 w-20 text-xs"
                               />
@@ -444,18 +570,18 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                             {holding.isEditing ? (
                               <Input
                                 type="number"
-                                value={holding.quantity}
+                                value={holding.quantity ?? ""}
                                 onChange={(e) =>
                                   updateHolding(
                                     holding.id,
                                     "quantity",
-                                    Number(e.target.value),
+                                    e.target.value ? Number(e.target.value) : null
                                   )
                                 }
                                 className="h-7 w-16 text-xs"
                               />
                             ) : (
-                              holding.quantity
+                              holding.quantity ?? "-"
                             )}
                           </TableCell>
                           <TableCell>
@@ -467,7 +593,7 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                                   updateHolding(
                                     holding.id,
                                     "value",
-                                    Number(e.target.value),
+                                    Number(e.target.value)
                                   )
                                 }
                                 className="h-7 w-24 text-xs"
@@ -479,12 +605,23 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-[10px]">
-                              {holding.currency}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {holding.platform}
+                            {holding.isEditing ? (
+                              <Input
+                                value={holding.currency}
+                                onChange={(e) =>
+                                  updateHolding(
+                                    holding.id,
+                                    "currency",
+                                    e.target.value.toUpperCase()
+                                  )
+                                }
+                                className="h-7 w-16 text-xs"
+                              />
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">
+                                {holding.currency}
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -515,7 +652,11 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-muted-foreground">
                     {holdings.length} holding{holdings.length !== 1 ? "s" : ""}{" "}
-                    extracted. Review and edit before confirming.
+                    extracted
+                    {detectedPlatform !== "Unknown"
+                      ? ` from ${detectedPlatform}`
+                      : ""}
+                    . Review and edit before confirming.
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -523,7 +664,7 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                       size="sm"
                       onClick={handleReset}
                     >
-                      Try Again
+                      Retake
                     </Button>
                     <Button
                       size="sm"
@@ -531,7 +672,7 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                       disabled={holdings.length === 0}
                     >
                       <Check className="mr-1.5 size-3.5" />
-                      Confirm & Save
+                      Confirm & Add
                     </Button>
                   </div>
                 </div>
@@ -562,8 +703,11 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                   <p className="text-lg font-semibold">Holdings imported!</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {holdings.length} holding
-                    {holdings.length !== 1 ? "s" : ""} have been added to your
-                    educational portfolio tracker.
+                    {holdings.length !== 1 ? "s" : ""} from{" "}
+                    {detectedPlatform !== "Unknown"
+                      ? detectedPlatform
+                      : "your portfolio"}{" "}
+                    have been added. Your net worth is now updated.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -571,7 +715,7 @@ function WmScreenshotImport({ isLoading = false, className }: WmScreenshotImport
                     Import Another
                   </Button>
                   <Button size="sm" asChild>
-                    <a href="/portfolio">View Portfolio</a>
+                    <a href="/all-my-money">View Dashboard</a>
                   </Button>
                 </div>
               </CardContent>

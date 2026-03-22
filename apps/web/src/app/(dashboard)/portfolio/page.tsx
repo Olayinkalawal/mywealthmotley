@@ -2,17 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { WmDisclaimer } from "@/components/wm/wm-disclaimer";
-
-// ── Helpers ─────────────────────────────────────────────────────────
-const formatCurrencyCompact = (value: number) => {
-  if (value >= 1000000) return `\u20A6${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `\u20A6${(value / 1000).toFixed(0)}K`;
-  return `\u20A6${value}`;
-};
-
-const formatFull = (value: number) => {
-  return "\u20A6" + value.toLocaleString();
-};
+import { useCurrency } from "@/hooks/use-currency";
 
 const calculateProjection = (
   initial: number,
@@ -29,6 +19,7 @@ const calculateProjection = (
 
 // ── Investment Growth Simulator ─────────────────────────────────────
 function SimulatorSection() {
+  const { format: fmtCurr, formatCompact: fmtCompactCurr } = useCurrency();
   const [initial, setInitial] = useState(500000);
   const [monthly, setMonthly] = useState(50000);
   const [years, setYears] = useState(10);
@@ -49,9 +40,9 @@ function SimulatorSection() {
       setValue: setInitial,
       min: 100000,
       max: 5000000,
-      minLabel: "\u20A6100K",
-      maxLabel: "\u20A65M",
-      display: formatFull(initial),
+      minLabel: fmtCompactCurr(100000),
+      maxLabel: fmtCompactCurr(5000000),
+      display: fmtCurr(initial),
     },
     {
       label: "Monthly Contribution",
@@ -59,9 +50,9 @@ function SimulatorSection() {
       setValue: setMonthly,
       min: 10000,
       max: 500000,
-      minLabel: "\u20A610K",
-      maxLabel: "\u20A6500K",
-      display: formatFull(monthly),
+      minLabel: fmtCompactCurr(10000),
+      maxLabel: fmtCompactCurr(500000),
+      display: fmtCurr(monthly),
     },
     {
       label: "Time Horizon",
@@ -248,7 +239,7 @@ function SimulatorSection() {
                 lineHeight: 1,
               }}
             >
-              {formatFull(projected)}
+              {fmtCurr(projected)}
             </h3>
             <div
               style={{
@@ -275,7 +266,7 @@ function SimulatorSection() {
                     fontWeight: 700,
                   }}
                 >
-                  {formatFull(totalInvested)}
+                  {fmtCurr(totalInvested)}
                 </span>
               </div>
               <div
@@ -318,7 +309,7 @@ function SimulatorSection() {
                     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                     <polyline points="17 6 23 6 23 12" />
                   </svg>
-                  {formatFull(returns)} (+{returnsPercent}%)
+                  {fmtCurr(returns)} (+{returnsPercent}%)
                 </span>
               </div>
             </div>

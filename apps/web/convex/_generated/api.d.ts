@@ -19,6 +19,7 @@ import type * as japa from "../japa.js";
 import type * as mono from "../mono.js";
 import type * as notifications from "../notifications.js";
 import type * as savingsGoals from "../savingsGoals.js";
+import type * as screenshotImport from "../screenshotImport.js";
 import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 import type * as waitlist from "../waitlist.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   mono: typeof mono;
   notifications: typeof notifications;
   savingsGoals: typeof savingsGoals;
+  screenshotImport: typeof screenshotImport;
   transactions: typeof transactions;
   users: typeof users;
   waitlist: typeof waitlist;

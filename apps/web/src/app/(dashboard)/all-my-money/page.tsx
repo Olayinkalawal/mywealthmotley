@@ -1,18 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
+import { useRouter } from "next/navigation";
 import { api } from "../../../../convex/_generated/api";
 import { formatCurrency } from "@/lib/currencies";
 import {
   ASSET_TYPE_COLORS,
   ASSET_TYPE_LABELS,
-  CURRENCY_COLORS,
-  MOCK_NET_WORTH_TREND,
 } from "@/lib/mock-data";
-import type { AssetBreakdown, CurrencyAllocation, AssetType } from "@/lib/mock-data";
-import type { Asset } from "@/lib/mock-data";
+import type { AssetBreakdown, AssetType } from "@/lib/mock-data";
 import type { CurrencyCode } from "@/lib/constants";
+import { WmQuickAddInvestment } from "@/components/wm/wm-quick-add-investment";
+import { WmScreenshotImport } from "@/components/wm/wm-screenshot-import";
+import { WmAddAssetDialog } from "@/components/wm/wm-add-asset-dialog";
 
 // ── Styles (faithful port of react-app-6.js) ──────────────────────
 
@@ -57,6 +58,28 @@ const s = {
     margin: "0 auto",
     padding: "20px 5% 80px",
     width: "100%",
+  },
+  quickActions: {
+    display: "flex",
+    gap: "12px",
+    marginBottom: "32px",
+    flexWrap: "wrap" as const,
+  },
+  quickActionBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "12px 20px",
+    background: "rgba(255, 255, 255, 0.04)",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRadius: "16px",
+    color: "#ffffff",
+    fontFamily: "'Inter', sans-serif",
+    fontSize: "0.875rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition:
+      "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s, background 0.2s",
   },
   heroSection: {
     display: "grid",
@@ -223,6 +246,46 @@ const s = {
     flexGrow: 1,
     background: "rgba(255, 255, 255, 0.08)",
   },
+  platformBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "4px 10px",
+    background: "rgba(255, 179, 71, 0.1)",
+    border: "1px solid rgba(255, 179, 71, 0.2)",
+    borderRadius: "8px",
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: "0.65rem",
+    color: "#ffb347",
+    marginTop: "8px",
+  },
+  holdingRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "8px 0",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
+    fontSize: "0.8rem",
+  },
+  holdingName: {
+    color: "#ffffff",
+    fontWeight: 500,
+  },
+  holdingTicker: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: "0.65rem",
+    color: "#968a84",
+    marginLeft: "8px",
+  },
+  holdingValue: {
+    fontFamily: "'JetBrains Mono', monospace",
+    color: "#ffb347",
+  },
+  holdingQty: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: "0.7rem",
+    color: "#968a84",
+  },
   connectCard: {
     background: "rgba(255, 255, 255, 0.04)",
     border: "1px dashed rgba(255, 255, 255, 0.08)",
@@ -243,20 +306,63 @@ const s = {
     borderRadius: "12px",
     animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
   },
+  screenshotModal: {
+    position: "fixed" as const,
+    inset: 0,
+    zIndex: 1000,
+    background: "rgba(0, 0, 0, 0.85)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+    overflowY: "auto" as const,
+    padding: "40px 20px",
+  },
+  screenshotModalInner: {
+    maxWidth: "800px",
+    margin: "0 auto",
+  },
+  modalCloseBtn: {
+    position: "absolute" as const,
+    top: "20px",
+    right: "20px",
+    background: "rgba(255, 255, 255, 0.1)",
+    border: "none",
+    borderRadius: "50%",
+    width: "40px",
+    height: "40px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontSize: "1.25rem",
+  },
+  fab: {
+    position: "fixed" as const,
+    bottom: "24px",
+    right: "24px",
+    width: "56px",
+    height: "56px",
+    borderRadius: "50%",
+    background: "#ffb347",
+    border: "none",
+    color: "#0d0b0a",
+    fontSize: "1.5rem",
+    fontWeight: 700,
+    cursor: "pointer",
+    boxShadow: "0 4px 20px rgba(255, 179, 71, 0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "transform 0.2s, box-shadow 0.2s",
+    zIndex: 50,
+  },
 };
 
 // ── Icon components for account types ─────────────────────────────
 
 function BankIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M3 21h18M3 10h18M5 10V21M9 10V21M13 10V21M17 10V21M12 3l8 7H4l8-7z" />
     </svg>
   );
@@ -264,14 +370,7 @@ function BankIcon() {
 
 function StocksIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
     </svg>
   );
@@ -279,14 +378,7 @@ function StocksIcon() {
 
 function PensionIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
@@ -295,14 +387,7 @@ function PensionIcon() {
 
 function PropertyIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
@@ -311,14 +396,7 @@ function PropertyIcon() {
 
 function CryptoIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
       <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
     </svg>
@@ -327,14 +405,7 @@ function CryptoIcon() {
 
 function CashIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
       <circle cx="12" cy="12" r="3" />
       <path d="M2 8h2M20 8h2M2 16h2M20 16h2" />
@@ -344,14 +415,7 @@ function CashIcon() {
 
 function WalletIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
       <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
       <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
@@ -369,7 +433,7 @@ const ASSET_ICON_MAP: Record<string, () => React.ReactElement> = {
   other: WalletIcon,
 };
 
-// ── Account Card Component ────────────────────────────────────────
+// ── Account Card Component (with holdings) ────────────────────────
 
 function AccountCard({
   icon,
@@ -379,6 +443,8 @@ function AccountCard({
   change,
   changeType,
   note,
+  platform,
+  holdings,
 }: {
   icon: React.ReactElement;
   type: string;
@@ -387,8 +453,17 @@ function AccountCard({
   change?: string;
   changeType?: "green" | "red";
   note?: string;
+  platform?: string;
+  holdings?: {
+    ticker?: string;
+    name: string;
+    quantity?: number;
+    value: number;
+    currency: string;
+  }[];
 }) {
   const [hovered, setHovered] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <div
@@ -401,6 +476,7 @@ function AccountCard({
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => holdings && holdings.length > 0 && setExpanded(!expanded)}
     >
       <div style={s.accountHeader}>
         <div style={s.accountIcon}>{icon}</div>
@@ -408,6 +484,7 @@ function AccountCard({
       </div>
       <div style={s.accountName}>{name}</div>
       <div style={s.accountBalance}>{balance}</div>
+      {platform && <div style={s.platformBadge}>{platform}</div>}
       {change && changeType === "green" && (
         <div style={s.changePillGreen}>{change}</div>
       )}
@@ -419,41 +496,73 @@ function AccountCard({
           {note}
         </div>
       )}
+      {/* Expandable holdings list */}
+      {expanded && holdings && holdings.length > 0 && (
+        <div style={{ marginTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
+          {holdings.map((h, i) => (
+            <div key={i} style={s.holdingRow}>
+              <div>
+                <span style={s.holdingName}>{h.name}</span>
+                {h.ticker && <span style={s.holdingTicker}>{h.ticker}</span>}
+                {h.quantity && (
+                  <span style={s.holdingQty}> x{h.quantity}</span>
+                )}
+              </div>
+              <span style={s.holdingValue}>
+                {formatCurrency(h.value, h.currency)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {holdings && holdings.length > 0 && (
+        <div
+          style={{
+            marginTop: "8px",
+            fontSize: "0.65rem",
+            color: "#968a84",
+            fontFamily: "'JetBrains Mono', monospace",
+          }}
+        >
+          {expanded ? "Click to collapse" : `${holdings.length} holding${holdings.length !== 1 ? "s" : ""} - click to expand`}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Connect Card Component ────────────────────────────────────────
+// ── Quick Action Button ──────────────────────────────────────────
 
-function ConnectCard() {
+function QuickActionButton({
+  label,
+  emoji,
+  onClick,
+}: {
+  label: string;
+  emoji: string;
+  onClick: () => void;
+}) {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <div
+    <button
       style={{
-        ...s.connectCard,
-        transform: hovered ? "translateY(-4px)" : "translateY(0)",
+        ...s.quickActionBtn,
+        transform: hovered ? "translateY(-2px)" : "translateY(0)",
+        borderColor: hovered
+          ? "rgba(255, 179, 71, 0.3)"
+          : "rgba(255, 255, 255, 0.08)",
+        background: hovered
+          ? "rgba(255, 179, 71, 0.08)"
+          : "rgba(255, 255, 255, 0.04)",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
     >
-      <div
-        style={{
-          width: "48px",
-          height: "48px",
-          borderRadius: "50%",
-          border: "1px solid #968a84",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "1.5rem",
-          color: "#968a84",
-        }}
-      >
-        +
-      </div>
-      <div style={s.accountName}>Add Account</div>
-    </div>
+      <span style={{ fontSize: "1.2rem" }}>{emoji}</span>
+      {label}
+    </button>
   );
 }
 
@@ -522,20 +631,29 @@ function AllocationCardDisplay({
   breakdownData: AssetBreakdown[];
   isLoading: boolean;
 }) {
-  const colorMap = ["#ffb347", "#ffffff", "rgba(255,255,255,0.4)", "rgba(255,255,255,0.15)", "#e67e22", "#968a84"];
+  const colorMap = [
+    "#ffb347",
+    "#ffffff",
+    "rgba(255,255,255,0.4)",
+    "rgba(255,255,255,0.15)",
+    "#e67e22",
+    "#968a84",
+  ];
   const totalClasses = breakdownData.length || 6;
 
-  // Compute donut segments
-  const circumference = 2 * Math.PI * 70; // r=70
+  const circumference = 2 * Math.PI * 70;
   let offset = 0;
   const segments = breakdownData.map((item, i) => {
     const dashLen = (item.percentage / 100) * circumference;
-    const seg = { dashLen, dashOffset: -offset, color: colorMap[i % colorMap.length] };
-    offset += dashLen + 5; // 5px gap
+    const seg = {
+      dashLen,
+      dashOffset: -offset,
+      color: colorMap[i % colorMap.length],
+    };
+    offset += dashLen + 5;
     return seg;
   });
 
-  // Fallback segments for when no data
   const fallbackSegments = [
     { dashLen: 110, dashOffset: 0, color: "#ffb347" },
     { dashLen: 180, dashOffset: -115, color: "#ffffff" },
@@ -590,7 +708,11 @@ function AllocationCardDisplay({
           }}
         >
           <span
-            style={{ fontFamily: "'DynaPuff', cursive", fontSize: "1.5rem", color: "#ffffff" }}
+            style={{
+              fontFamily: "'DynaPuff', cursive",
+              fontSize: "1.5rem",
+              color: "#ffffff",
+            }}
           >
             {isLoading ? "-" : totalClasses}
           </span>
@@ -620,22 +742,31 @@ function AllocationCardDisplay({
 // ── Main Page ─────────────────────────────────────────────────────
 
 export default function AllMyMoneyPage() {
-  // ── Auth guard ──────────────────────────────────────────────────
+  const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
 
-  // ── Convex queries ─────────────────────────────────────────────
-  const netWorth = useQuery(api.allMyMoney.getNetWorth, isAuthenticated ? {} : "skip");
-  const assetBreakdown = useQuery(api.allMyMoney.getAssetBreakdown, isAuthenticated ? {} : "skip");
+  // Modal states
+  const [showScreenshotImport, setShowScreenshotImport] = useState(false);
+  const [showFab, setShowFab] = useState(false);
 
-  // ── Convex mutations ───────────────────────────────────────────
+  // Convex queries (reactive - auto-update when data changes)
+  const netWorth = useQuery(
+    api.allMyMoney.getNetWorth,
+    isAuthenticated ? {} : "skip"
+  );
+  const assetBreakdown = useQuery(
+    api.allMyMoney.getAssetBreakdown,
+    isAuthenticated ? {} : "skip"
+  );
+
+  // Convex mutations
   const addAsset = useMutation(api.allMyMoney.addManualAsset);
-  const deleteAsset = useMutation(api.allMyMoney.deleteManualAsset);
 
-  // ── Loading states ─────────────────────────────────────────────
+  // Loading states
   const isLoadingNetWorth = netWorth === undefined;
   const isLoadingBreakdown = assetBreakdown === undefined;
 
-  // ── Derived data ───────────────────────────────────────────────
+  // Derived data
   const primaryCurrency: CurrencyCode =
     (netWorth?.primaryCurrency as CurrencyCode) ?? "NGN";
 
@@ -646,65 +777,117 @@ export default function AllMyMoneyPage() {
       value: b.value,
       percentage: b.percentage,
       items: b.items,
-      color: ASSET_TYPE_COLORS[b.type as AssetType] ?? "hsl(280, 30%, 55%)",
+      color:
+        ASSET_TYPE_COLORS[b.type as AssetType] ?? "hsl(280, 30%, 55%)",
     })) ?? [];
 
-  // ── Transform net worth accounts into card data ────────────────
-  const accountCards = (netWorth?.accounts ?? []).map((acc) => {
-    const IconComp = ASSET_ICON_MAP[acc.type] ?? WalletIcon;
-    return {
-      icon: <IconComp />,
-      type: ASSET_TYPE_LABELS[acc.type as AssetType] ?? acc.type,
-      name: acc.name,
-      balance: formatCurrency(acc.value, acc.currency),
-      change: undefined as string | undefined,
-      changeType: "green" as "green" | "red",
-      note: undefined as string | undefined,
-    };
-  });
+  // Group accounts by platform
+  const accountsByPlatform = useMemo(() => {
+    const accounts = netWorth?.accounts ?? [];
+    const groups: Record<
+      string,
+      Array<{
+        id: string;
+        name: string;
+        type: string;
+        value: number;
+        currency: string;
+        convertedValue: number;
+        platform?: string;
+        holdings?: {
+          ticker?: string;
+          name: string;
+          quantity?: number;
+          value: number;
+          currency: string;
+        }[];
+      }>
+    > = {};
 
-  // Fallback mock accounts when no Convex data
-  const fallbackAccounts = [
-    {
-      icon: <BankIcon />,
-      type: "Checking",
-      name: "High-Yield Savings",
-      balance: formatCurrency(2500000, primaryCurrency),
-      change: "+4.25% APY",
-      changeType: "green" as const,
-    },
-    {
-      icon: <StocksIcon />,
-      type: "Investments",
-      name: "Global ETF Portfolio",
-      balance: formatCurrency(4960000, primaryCurrency),
-      change: "+3.2% This Month",
-      changeType: "green" as const,
-    },
-    {
-      icon: <PensionIcon />,
-      type: "Pension",
-      name: "Retirement Plan",
-      balance: formatCurrency(1500000, primaryCurrency),
-      change: "Vested",
-      changeType: "green" as const,
-    },
-    {
-      icon: <PropertyIcon />,
-      type: "Real Estate",
-      name: "Main Residence",
-      balance: formatCurrency(15000000, primaryCurrency),
-      note: "Less mortgage balance",
-    },
-    {
-      icon: <CryptoIcon />,
-      type: "Crypto",
-      name: "Cold Storage",
-      balance: formatCurrency(775000, primaryCurrency),
-      change: "-2.4% Today",
-      changeType: "red" as const,
-    },
-  ];
+    for (const acc of accounts) {
+      // We need to extract platform info from the name or use a default
+      const platformKey =
+        acc.type === "bank" ? "Banks" : (acc as any).platform || "Other";
+      if (!groups[platformKey]) {
+        groups[platformKey] = [];
+      }
+      groups[platformKey]!.push(acc as any);
+    }
+
+    return groups;
+  }, [netWorth]);
+
+  // Transform accounts into card data
+  const accountCards = useMemo(() => {
+    return (netWorth?.accounts ?? []).map((acc: any) => {
+      const IconComp = ASSET_ICON_MAP[acc.type] ?? WalletIcon;
+      return {
+        icon: <IconComp />,
+        type: ASSET_TYPE_LABELS[acc.type as AssetType] ?? acc.type,
+        name: acc.name,
+        balance: formatCurrency(acc.value, acc.currency),
+        change: undefined as string | undefined,
+        changeType: "green" as "green" | "red",
+        note: undefined as string | undefined,
+        platform: acc.platform as string | undefined,
+        holdings: acc.holdings as
+          | {
+              ticker?: string;
+              name: string;
+              quantity?: number;
+              value: number;
+              currency: string;
+            }[]
+          | undefined,
+      };
+    });
+  }, [netWorth]);
+
+  // Fallback mock accounts
+  const fallbackAccounts = useMemo(
+    () => [
+      {
+        icon: <BankIcon />,
+        type: "Checking",
+        name: "High-Yield Savings",
+        balance: formatCurrency(2500000, primaryCurrency),
+        change: "+4.25% APY",
+        changeType: "green" as const,
+      },
+      {
+        icon: <StocksIcon />,
+        type: "Investments",
+        name: "Global ETF Portfolio",
+        balance: formatCurrency(4960000, primaryCurrency),
+        change: "+3.2% This Month",
+        changeType: "green" as const,
+      },
+      {
+        icon: <PensionIcon />,
+        type: "Pension",
+        name: "Retirement Plan",
+        balance: formatCurrency(1500000, primaryCurrency),
+        change: "Vested",
+        changeType: "green" as const,
+      },
+      {
+        icon: <PropertyIcon />,
+        type: "Real Estate",
+        name: "Main Residence",
+        balance: formatCurrency(15000000, primaryCurrency),
+        note: "Less mortgage balance",
+      },
+      {
+        icon: <CryptoIcon />,
+        type: "Crypto",
+        name: "Cold Storage",
+        balance: formatCurrency(775000, primaryCurrency),
+        change: "-2.4% Today",
+        changeType: "red" as const,
+      },
+    ],
+    [primaryCurrency]
+  );
 
   const displayAccounts =
     !isLoadingNetWorth && accountCards.length > 0
@@ -713,7 +896,7 @@ export default function AllMyMoneyPage() {
         ? fallbackAccounts
         : [];
 
-  // Inject font import
+  // Inject fonts
   useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
@@ -736,6 +919,44 @@ export default function AllMyMoneyPage() {
       <div style={{ ...s.ambientGlow, ...s.glow2 }} />
 
       <main style={s.main}>
+        {/* Quick Action Buttons */}
+        <div style={s.quickActions}>
+          <QuickActionButton
+            emoji={"\uD83D\uDCF8"}
+            label="Import Screenshot"
+            onClick={() => setShowScreenshotImport(true)}
+          />
+          <WmQuickAddInvestment
+            trigger={
+              <QuickActionButton
+                emoji={"\u2795"}
+                label="Quick Add Stock"
+                onClick={() => {}}
+              />
+            }
+          />
+          <WmAddAssetDialog
+            trigger={
+              <QuickActionButton
+                emoji={"\uD83C\uDFE6"}
+                label="Add Asset"
+                onClick={() => {}}
+              />
+            }
+            onSubmit={async (data) => {
+              await addAsset({
+                name: data.name,
+                type: data.type,
+                platform: data.platform || undefined,
+                value: data.value,
+                currency: data.currency,
+                holdings: data.holdings,
+                notes: data.notes || undefined,
+              });
+            }}
+          />
+        </div>
+
         {/* Hero: Net Worth + Allocation */}
         <div style={s.heroSection}>
           <NetWorthCardDisplay
@@ -771,9 +992,29 @@ export default function AllMyMoneyPage() {
                   minHeight: "180px",
                 }}
               >
-                <div style={{ ...s.loadingSkeleton, height: "40px", width: "40px", marginBottom: "24px" }} />
-                <div style={{ ...s.loadingSkeleton, height: "16px", width: "120px", marginBottom: "8px" }} />
-                <div style={{ ...s.loadingSkeleton, height: "28px", width: "160px" }} />
+                <div
+                  style={{
+                    ...s.loadingSkeleton,
+                    height: "40px",
+                    width: "40px",
+                    marginBottom: "24px",
+                  }}
+                />
+                <div
+                  style={{
+                    ...s.loadingSkeleton,
+                    height: "16px",
+                    width: "120px",
+                    marginBottom: "8px",
+                  }}
+                />
+                <div
+                  style={{
+                    ...s.loadingSkeleton,
+                    height: "28px",
+                    width: "160px",
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -785,10 +1026,41 @@ export default function AllMyMoneyPage() {
             {displayAccounts.map((account, index) => (
               <AccountCard key={index} {...account} />
             ))}
-            <ConnectCard />
           </div>
         )}
       </main>
+
+      {/* Screenshot Import Modal */}
+      {showScreenshotImport && (
+        <div style={s.screenshotModal}>
+          <button
+            style={s.modalCloseBtn}
+            onClick={() => setShowScreenshotImport(false)}
+          >
+            x
+          </button>
+          <div style={s.screenshotModalInner}>
+            <WmScreenshotImport
+              onComplete={() => {
+                // Modal stays open showing success state
+                // Dashboard will auto-update via reactive queries
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* FAB for mobile - Quick Add */}
+      <WmQuickAddInvestment
+        trigger={
+          <button
+            style={s.fab}
+            className="sm:hidden"
+          >
+            +
+          </button>
+        }
+      />
     </div>
   );
 }

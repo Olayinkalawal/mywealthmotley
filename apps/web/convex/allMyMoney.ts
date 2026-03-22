@@ -85,6 +85,14 @@ export const getNetWorth = query({
       value: number;
       currency: string;
       convertedValue: number;
+      platform?: string;
+      holdings?: Array<{
+        ticker?: string;
+        name: string;
+        quantity?: number;
+        value: number;
+        currency: string;
+      }>;
     }> = [];
 
     // Sum bank accounts
@@ -122,6 +130,8 @@ export const getNetWorth = query({
         value: asset.value,
         currency: asset.currency,
         convertedValue: converted,
+        platform: asset.platform,
+        holdings: asset.holdings,
       });
     }
 

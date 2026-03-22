@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useCurrency } from "@/hooks/use-currency";
 
 // ── Mock Data ────────────────────────────────────────────────────────
 
@@ -18,46 +19,50 @@ const PROJECTION_DATA = [
   { year: 10, current: 500000, wm: 13000000, label: "10 yr" },
 ];
 
-const COMPARISON_STATS = [
-  {
-    label: "Net Worth in 5 Years",
-    current: "N500K",
-    wm: "N4.2M",
-    currentColor: "#ef4444",
-    wmColor: "#34d399",
-  },
-  {
-    label: "Monthly Passive Income",
-    current: "N0",
-    wm: "N35K",
-    currentColor: "#ef4444",
-    wmColor: "#34d399",
-  },
-  {
-    label: "Emergency Fund",
-    current: "0 months",
-    wm: "6 months",
-    currentColor: "#ef4444",
-    wmColor: "#34d399",
-  },
-  {
-    label: "Retirement Readiness",
-    current: "2%",
-    wm: "34%",
-    currentColor: "#ef4444",
-    wmColor: "#34d399",
-  },
-];
+function getComparisonStats(fmtCompact: (n: number) => string) {
+  return [
+    {
+      label: "Net Worth in 5 Years",
+      current: fmtCompact(500000),
+      wm: fmtCompact(4200000),
+      currentColor: "#ef4444",
+      wmColor: "#34d399",
+    },
+    {
+      label: "Monthly Passive Income",
+      current: fmtCompact(0),
+      wm: fmtCompact(35000),
+      currentColor: "#ef4444",
+      wmColor: "#34d399",
+    },
+    {
+      label: "Emergency Fund",
+      current: "0 months",
+      wm: "6 months",
+      currentColor: "#ef4444",
+      wmColor: "#34d399",
+    },
+    {
+      label: "Retirement Readiness",
+      current: "2%",
+      wm: "34%",
+      currentColor: "#ef4444",
+      wmColor: "#34d399",
+    },
+  ];
+}
 
-const MILESTONES = [
-  { year: 1, current: "Still living paycheck to paycheck", wm: "Emergency fund complete, investing started" },
-  { year: 5, current: "No investments, no growth", wm: "N4.2M net worth, passive income flowing" },
-  { year: 10, current: "Same spot, inflation eating your savings", wm: "N13M net worth, financially free trajectory" },
-];
+function getMilestones(fmtCompact: (n: number) => string) {
+  return [
+    { year: 1, current: "Still living paycheck to paycheck", wm: "Emergency fund complete, investing started" },
+    { year: 5, current: "No investments, no growth", wm: `${fmtCompact(4200000)} net worth, passive income flowing` },
+    { year: 10, current: "Same spot, inflation eating your savings", wm: `${fmtCompact(13000000)} net worth, financially free trajectory` },
+  ];
+}
 
 // ── Animated Chart ───────────────────────────────────────────────────
 
-function DivergingChart() {
+function DivergingChart({ fmtCompact }: { fmtCompact: (n: number) => string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [animated, setAnimated] = useState(false);
 
@@ -115,13 +120,7 @@ function DivergingChart() {
         ctx!.fillStyle = "#968a84";
         ctx!.font = "10px monospace";
         ctx!.textAlign = "right";
-        if (val >= 1000000) {
-          ctx!.fillText(`N${(val / 1000000).toFixed(0)}M`, padding.left - 8, y + 3);
-        } else if (val >= 1000) {
-          ctx!.fillText(`N${(val / 1000).toFixed(0)}K`, padding.left - 8, y + 3);
-        } else {
-          ctx!.fillText(`N${val}`, padding.left - 8, y + 3);
-        }
+        ctx!.fillText(fmtCompact(val), padding.left - 8, y + 3);
       }
 
       // X-axis labels
@@ -338,7 +337,10 @@ function LetterToFutureSelf() {
 // ── Main Page ────────────────────────────────────────────────────────
 
 export default function FutureYouPage() {
+  const { formatCompact: fmtCompact } = useCurrency();
   const [activeTab, setActiveTab] = useState<"5" | "10">("5");
+  const COMPARISON_STATS = getComparisonStats(fmtCompact);
+  const MILESTONES = getMilestones(fmtCompact);
 
   return (
     <div className="max-w-[1200px] mx-auto flex flex-col gap-10">
@@ -433,7 +435,7 @@ export default function FutureYouPage() {
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
-          <DivergingChart />
+          <DivergingChart fmtCompact={fmtCompact} />
         </div>
 
         {/* Path Labels */}

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, mutation, query, internalMutation } from "./_generated/server";
+import { action, mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import OpenAI from "openai";
 
@@ -69,6 +69,19 @@ export const _updateImportStatus = internalMutation({
       updates.processedAt = Date.now();
     }
     await ctx.db.patch(args.importId, updates);
+  },
+});
+
+// ── Internal query: count recent imports for rate limiting ───────────
+export const countRecentImports = internalQuery({
+  args: { userId: v.id("users"), sinceTimestamp: v.number() },
+  handler: async (ctx, args) => {
+    const imports = await ctx.db
+      .query("screenshotImports")
+      .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
+      .collect();
+
+    return imports.filter((i) => i.createdAt >= args.sinceTimestamp).length;
   },
 });
 
@@ -142,13 +155,7 @@ export const analyzeScreenshot = action({
     importId: v.id("screenshotImports"),
   },
   handler: async (ctx, args) => {
-    // Update status to processing
-    await ctx.runMutation(internal.screenshotImport._updateImportStatus, {
-      importId: args.importId,
-      status: "processing",
-    });
-
-    // Resolve the authenticated user for audit logging
+    // Resolve the authenticated user for audit logging and rate limiting
     const identity = await ctx.auth.getUserIdentity();
     let auditUserId: any = null;
     if (identity) {
@@ -157,6 +164,41 @@ export const analyzeScreenshot = action({
       });
       auditUserId = user?._id ?? null;
     }
+
+    // ── Rate limiting ─────────────────────────────────────────────────
+    if (auditUserId) {
+      const now = Date.now();
+      const oneHourAgo = now - 60 * 60 * 1000;
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+      const [importsLastHour, importsLastDay] = await Promise.all([
+        ctx.runQuery(internal.screenshotImport.countRecentImports, {
+          userId: auditUserId,
+          sinceTimestamp: oneHourAgo,
+        }),
+        ctx.runQuery(internal.screenshotImport.countRecentImports, {
+          userId: auditUserId,
+          sinceTimestamp: oneDayAgo,
+        }),
+      ]);
+
+      if (importsLastHour >= 10) {
+        throw new Error(
+          "You've reached the upload limit. Please try again later."
+        );
+      }
+      if (importsLastDay >= 30) {
+        throw new Error(
+          "You've reached the daily upload limit. Please try again tomorrow."
+        );
+      }
+    }
+
+    // Update status to processing
+    await ctx.runMutation(internal.screenshotImport._updateImportStatus, {
+      importId: args.importId,
+      status: "processing",
+    });
 
     try {
       // Server-side file size validation via storage metadata
@@ -195,11 +237,12 @@ For each holding, provide:
 - quantity (number or null): Number of shares/units if visible
 - value (number): The current value shown (use the number without currency symbols)
 - currency (string): The currency code like "GBP", "USD", "NGN", "EUR"
+- confidence (number 0-100): How confident you are in the extraction accuracy for this holding. 100 = clearly visible and unambiguous, 50 = partially visible or unclear, 0 = guessing.
 
 Also identify the platform/app name if visible (e.g. "Trading 212", "Cowrywise", "Bamboo", "eToro", "Risevest").
 
 Return ONLY valid JSON in exactly this format, with no markdown or extra text:
-{"platform":"DetectedPlatformName","holdings":[{"name":"Stock Name","ticker":"TICK","quantity":5,"value":1234.56,"currency":"USD"}]}
+{"platform":"DetectedPlatformName","holdings":[{"name":"Stock Name","ticker":"TICK","quantity":5,"value":1234.56,"currency":"USD","confidence":95}]}
 
 If you cannot identify specific holdings, still return the JSON structure with whatever you can extract. If the image is not an investment screenshot, return: {"platform":"Unknown","holdings":[]}`,
               },
@@ -246,6 +289,7 @@ If you cannot identify specific holdings, still return the JSON structure with w
         quantity: typeof h.quantity === "number" ? h.quantity : null,
         value: typeof h.value === "number" ? h.value : 0,
         currency: String(h.currency || "USD"),
+        confidence: typeof h.confidence === "number" ? Math.min(100, Math.max(0, Math.round(h.confidence))) : 75,
       }));
 
       const result = {

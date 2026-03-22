@@ -235,6 +235,28 @@ export const getBlackTaxSummaryForUser = internalQuery({
   },
 });
 
+// ── Internal query: count recent AI messages for rate limiting ─────────
+
+export const countRecentUserMessages = internalQuery({
+  args: { userId: v.id("users"), sinceTimestamp: v.number() },
+  handler: async (ctx, args) => {
+    const conversations = await ctx.db
+      .query("aiConversations")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    let count = 0;
+    for (const convo of conversations) {
+      for (const msg of convo.messages) {
+        if (msg.role === "user" && msg.timestamp >= args.sinceTimestamp) {
+          count++;
+        }
+      }
+    }
+    return count;
+  },
+});
+
 // ── Internal mutations (for saving conversation data) ─────────────────
 
 export const createConversationInternal = internalMutation({
@@ -446,6 +468,35 @@ export const sendMessage = action({
     const userId = user?._id;
     const userCurrency = user?.currency ?? "NGN";
     const userCountry = user?.country ?? "NG";
+
+    // ── Rate limiting ─────────────────────────────────────────────────
+    if (userId) {
+      const now = Date.now();
+      const oneMinuteAgo = now - 60 * 1000;
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+      const [messagesLastMinute, messagesLastDay] = await Promise.all([
+        ctx.runQuery(internal.aiSholz.countRecentUserMessages, {
+          userId,
+          sinceTimestamp: oneMinuteAgo,
+        }),
+        ctx.runQuery(internal.aiSholz.countRecentUserMessages, {
+          userId,
+          sinceTimestamp: oneDayAgo,
+        }),
+      ]);
+
+      if (messagesLastMinute >= 10) {
+        throw new Error(
+          "You're sending messages too quickly. Please wait a moment."
+        );
+      }
+      if (messagesLastDay >= 100) {
+        throw new Error(
+          "You've reached your daily message limit. Try again tomorrow."
+        );
+      }
+    }
 
     // 2. Get or create conversation
     let conversationId = args.conversationId;

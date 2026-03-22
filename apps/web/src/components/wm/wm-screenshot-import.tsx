@@ -43,7 +43,34 @@ interface ExtractedHolding {
   quantity: number | null;
   value: number;
   currency: string;
+  confidence: number;
   isEditing: boolean;
+}
+
+// ── Confidence helpers ──────────────────────────────────────────────
+function ConfidenceBadge({ confidence }: { confidence: number }) {
+  if (confidence >= 80) {
+    return (
+      <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-[#34d399]/15 px-1.5 py-0.5 text-[9px] font-medium text-[#34d399]">
+        <span className="size-1.5 rounded-full bg-[#34d399]" />
+        High
+      </span>
+    );
+  }
+  if (confidence >= 50) {
+    return (
+      <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-[#ffb347]/15 px-1.5 py-0.5 text-[9px] font-medium text-[#ffb347]">
+        <span className="size-1.5 rounded-full bg-[#ffb347]" />
+        Medium
+      </span>
+    );
+  }
+  return (
+    <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-[#ef4444]/15 px-1.5 py-0.5 text-[9px] font-medium text-[#ef4444]">
+      <Warning className="size-2.5" weight="fill" />
+      Verify
+    </span>
+  );
 }
 
 type ImportState = "idle" | "uploading" | "processing" | "review" | "confirmed" | "error";
@@ -168,6 +195,7 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
             quantity: h.quantity,
             value: h.value,
             currency: h.currency,
+            confidence: typeof h.confidence === "number" ? h.confidence : 75,
             isEditing: false,
           })),
         ]);
@@ -231,6 +259,7 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
         quantity: number | null;
         value: number;
         currency: string;
+        confidence: number;
         isEditing: boolean;
       }> = [];
       let lastPlatform = "";
@@ -273,6 +302,7 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
                 quantity: h.quantity,
                 value: h.value,
                 currency: h.currency,
+                confidence: typeof h.confidence === "number" ? h.confidence : 75,
                 isEditing: false,
               }))
             );
@@ -651,7 +681,16 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
                     </TableHeader>
                     <TableBody>
                       {holdings.map((holding) => (
-                        <TableRow key={holding.id}>
+                        <TableRow
+                          key={holding.id}
+                          className={cn(
+                            holding.confidence < 50 &&
+                              "border-l-2 border-l-[#ef4444]/60 bg-[#ef4444]/5",
+                            holding.confidence >= 50 &&
+                              holding.confidence < 80 &&
+                              "border-l-2 border-l-[#ffb347]/40 bg-[#ffb347]/5"
+                          )}
+                        >
                           <TableCell>
                             {holding.isEditing ? (
                               <Input
@@ -662,9 +701,12 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
                                 className="h-7 text-xs"
                               />
                             ) : (
-                              <span className="text-sm font-medium">
-                                {holding.name}
-                              </span>
+                              <div className="flex items-center">
+                                <span className="text-sm font-medium">
+                                  {holding.name}
+                                </span>
+                                <ConfidenceBadge confidence={holding.confidence} />
+                              </div>
                             )}
                           </TableCell>
                           <TableCell>

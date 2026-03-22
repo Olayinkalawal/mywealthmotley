@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { WmSidebar } from "@/components/wm/wm-sidebar";
 import { WmHeader } from "@/components/wm/wm-header";
+import { WmMfaPrompt } from "@/components/wm/wm-mfa-prompt";
 import { useEnsureUser } from "@/hooks/use-ensure-user";
+import { useSessionTimeout } from "@/hooks/use-session-timeout";
 
 export default function DashboardLayout({
   children,
@@ -14,12 +16,14 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   useEnsureUser();
+  useSessionTimeout();
 
   return (
     <SidebarProvider>
       <WmSidebar variant="default" />
       <SidebarInset className="!bg-[#0d0b0a]">
         <WmHeader />
+        <WmMfaPrompt />
         {/* Ambient glow effects */}
         <div
           className="pointer-events-none fixed -top-[10%] -left-[10%] w-[40vw] h-[40vw] rounded-full z-0"

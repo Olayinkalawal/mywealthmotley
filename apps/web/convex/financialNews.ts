@@ -192,6 +192,27 @@ interface GNewsResponse {
   articles?: GNewsArticle[];
 }
 
+// ── Alpha Vantage NEWS_SENTIMENT article shape ──────────────────────
+interface AlphaVantageFeedItem {
+  title?: string;
+  summary?: string;
+  source?: string;
+  url?: string;
+  time_published?: string; // "20260322T120000"
+  overall_sentiment_score?: number; // -1 to 1
+  overall_sentiment_label?: string; // "Bullish" | "Bearish" | "Neutral" | "Somewhat-Bullish" | "Somewhat-Bearish"
+  topics?: Array<{
+    topic?: string;
+    relevance_score?: string;
+  }>;
+}
+
+interface AlphaVantageNewsResponse {
+  feed?: AlphaVantageFeedItem[];
+  Note?: string; // Rate limit message
+  Information?: string;
+}
+
 // ── Fetch from NewsData.io (if API key available) ────────────────────
 async function fetchFromNewsData(
   apiKey: string,
@@ -229,6 +250,71 @@ async function fetchFromGNews(
   } catch (error) {
     console.error(`GNews.io fetch error for ${country}:`, error);
     return [];
+  }
+}
+
+// ── Fetch from Alpha Vantage NEWS_SENTIMENT (if API key available) ───
+// Free tier: 25 requests/day. Get a free key at alphavantage.co
+async function fetchFromAlphaVantage(
+  apiKey: string,
+): Promise<AlphaVantageFeedItem[]> {
+  try {
+    const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=finance,economy&apikey=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Alpha Vantage returned ${response.status}`);
+      return [];
+    }
+    const data: AlphaVantageNewsResponse = await response.json();
+
+    // Check for rate limit / info messages
+    if (data.Note || data.Information) {
+      console.warn("Alpha Vantage:", data.Note || data.Information);
+      return [];
+    }
+
+    return data.feed ?? [];
+  } catch (error) {
+    console.error("Alpha Vantage fetch error:", error);
+    return [];
+  }
+}
+
+// ── Map Alpha Vantage sentiment + topics to our categories ──────────
+function classifyAlphaVantageTopic(item: AlphaVantageFeedItem): string {
+  // Check topics from Alpha Vantage first
+  const topicNames = (item.topics || [])
+    .map((t) => (t.topic || "").toLowerCase())
+    .join(" ");
+
+  if (/blockchain|cryptocurrency|crypto/.test(topicNames)) return "crypto";
+  if (/fixed_income|bonds|treasury/.test(topicNames)) return "bonds";
+  if (/economy_monetary|central_bank|interest_rate/.test(topicNames)) return "policy";
+  if (/finance_savings|personal_finance|retirement/.test(topicNames)) return "savings";
+  if (/stock|equity|ipo|etf|index_fund|financial_markets/.test(topicNames)) return "markets";
+
+  // Fall back to keyword classification on title + summary
+  const text = `${item.title || ""} ${item.summary || ""}`.toLowerCase();
+  if (/\b(crypto|bitcoin|btc|ethereum|eth|blockchain|defi)\b/.test(text)) return "crypto";
+  if (/\b(bond|gilt|treasury|yield|fixed.?income)\b/.test(text)) return "bonds";
+  if (/\b(central.?bank|interest.?rate|monetary.?policy|inflation|fed|boe|cbn)\b/.test(text)) return "policy";
+  if (/\b(sav(e|ing)|deposit|isa|pension|retirement)\b/.test(text)) return "savings";
+  if (/\b(stock|equity|market|index|s&p|nasdaq|ftse|share|ipo|etf)\b/.test(text)) return "markets";
+
+  return "general";
+}
+
+// ── Parse Alpha Vantage time_published format ───────────────────────
+// Format: "20260322T120000" -> timestamp
+function parseAlphaVantageTime(timeStr?: string): number {
+  if (!timeStr) return Date.now();
+  try {
+    // "20260322T120000" -> "2026-03-22T12:00:00"
+    const formatted = `${timeStr.slice(0, 4)}-${timeStr.slice(4, 6)}-${timeStr.slice(6, 8)}T${timeStr.slice(9, 11)}:${timeStr.slice(11, 13)}:${timeStr.slice(13, 15)}`;
+    const ts = new Date(formatted).getTime();
+    return isNaN(ts) ? Date.now() : ts;
+  } catch {
+    return Date.now();
   }
 }
 
@@ -334,11 +420,51 @@ export const fetchFinancialNews = internalAction({
       return { success: true, source: "gnews.io", inserted: totalInserted };
     }
 
-    // ── Strategy 3: No API key -- fall back to mock data seed ────
+    // ── Strategy 3: Alpha Vantage NEWS_SENTIMENT ──────────────────
+    // Free tier: 25 requests/day. Get a free API key at alphavantage.co
+    const alphaVantageKey = process.env.ALPHA_VANTAGE_API_KEY;
+    if (alphaVantageKey) {
+      const articles = await fetchFromAlphaVantage(alphaVantageKey);
+
+      for (const article of articles) {
+        if (!article.title) continue;
+
+        // Alpha Vantage summaries are already clean, use directly
+        const summary = article.summary || article.title;
+        const category = classifyAlphaVantageTopic(article);
+        const region = detectRegion(article.title, summary);
+
+        const result = await ctx.runMutation(
+          internal.financialNews.insertNewsItem,
+          {
+            title: article.title,
+            summary:
+              summary.length > 300
+                ? summary.substring(0, 297) + "..."
+                : summary,
+            region: region || "global",
+            category,
+            source: article.source || "Alpha Vantage",
+            originalUrl: article.url,
+            publishedAt: parseAlphaVantageTime(article.time_published),
+          }
+        );
+
+        if (result.inserted) totalInserted++;
+      }
+
+      return {
+        success: true,
+        source: "alpha-vantage",
+        inserted: totalInserted,
+      };
+    }
+
+    // ── Strategy 4: No API key -- fall back to mock data seed ────
     // When no external API key is configured, seed with curated
     // editorial content so the UI is never empty.
     console.log(
-      "No NEWS_API_KEY or GNEWS_API_KEY found. Falling back to mock seed data."
+      "No NEWS_API_KEY, GNEWS_API_KEY, or ALPHA_VANTAGE_API_KEY found. Falling back to mock seed data."
     );
     await ctx.runMutation(internal.financialNews.seedNewsItems, {});
     return { success: true, source: "mock-seed", inserted: 0 };

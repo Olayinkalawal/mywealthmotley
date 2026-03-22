@@ -316,6 +316,17 @@ export default defineSchema({
     .index("by_region", ["region"])
     .index("by_publishedAt", ["publishedAt"]),
 
+  // ── Economic indicators (FRED / manual) ─────────────────────────
+  economicIndicators: defineTable({
+    indicator: v.string(), // "US_10Y_YIELD" | "FED_RATE" | "US_CPI" | "NG_INFLATION" | "UK_BASE_RATE"
+    value: v.number(),
+    unit: v.string(), // "%" | "index"
+    label: v.string(), // "US 10-Year Treasury Yield"
+    source: v.string(),
+    date: v.string(), // "2026-03-20"
+    fetchedAt: v.number(),
+  }).index("by_indicator", ["indicator"]),
+
   // ── Cached stock/ETF prices ──────────────────────────────────────
   priceCache: defineTable({
     ticker: v.string(),

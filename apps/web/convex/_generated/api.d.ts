@@ -15,6 +15,7 @@ import type * as blackTax from "../blackTax.js";
 import type * as budgets from "../budgets.js";
 import type * as crons from "../crons.js";
 import type * as dataRetention from "../dataRetention.js";
+import type * as economicData from "../economicData.js";
 import type * as email from "../email.js";
 import type * as exchangeRates from "../exchangeRates.js";
 import type * as financialNews from "../financialNews.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   budgets: typeof budgets;
   crons: typeof crons;
   dataRetention: typeof dataRetention;
+  economicData: typeof economicData;
   email: typeof email;
   exchangeRates: typeof exchangeRates;
   financialNews: typeof financialNews;

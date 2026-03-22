@@ -60,6 +60,16 @@ crons.weekly(
   {}
 );
 
+// ── Refresh economic indicators daily at 04:00 UTC ──────────────
+// Fetches key macro data from FRED (if API key is set) or uses
+// static fallback values.
+crons.daily(
+  "refresh-economic-indicators",
+  { hourUTC: 4, minuteUTC: 0 },
+  internal.economicData.fetchEconomicIndicators,
+  {}
+);
+
 // TODO: Generate daily net worth snapshots
 // crons.daily(
 //   "net-worth-snapshots",

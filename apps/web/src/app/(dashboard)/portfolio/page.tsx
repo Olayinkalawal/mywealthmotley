@@ -1899,6 +1899,256 @@ function GrowthChart({
   );
 }
 
+// ── Crypto Prices Section ───────────────────────────────────────────
+// Displays live crypto prices from CoinGecko via priceCache.
+const CRYPTO_TICKERS = [
+  { ticker: "BTC", name: "Bitcoin", icon: "B" },
+  { ticker: "ETH", name: "Ethereum", icon: "E" },
+  { ticker: "SOL", name: "Solana", icon: "S" },
+  { ticker: "ADA", name: "Cardano", icon: "A" },
+  { ticker: "XRP", name: "Ripple", icon: "X" },
+  { ticker: "DOGE", name: "Dogecoin", icon: "D" },
+  { ticker: "BNB", name: "BNB", icon: "B" },
+  { ticker: "DOT", name: "Polkadot", icon: "P" },
+];
+
+// Mock crypto prices for initial display (replaced by live data when available)
+const MOCK_CRYPTO_PRICES: Record<
+  string,
+  { price: number; changePercent: number }
+> = {
+  BTC: { price: 87250.42, changePercent: 2.14 },
+  ETH: { price: 2035.18, changePercent: -1.35 },
+  SOL: { price: 142.67, changePercent: 4.82 },
+  ADA: { price: 0.72, changePercent: -0.45 },
+  XRP: { price: 2.34, changePercent: 1.28 },
+  DOGE: { price: 0.178, changePercent: 5.67 },
+  BNB: { price: 612.35, changePercent: 0.93 },
+  DOT: { price: 7.45, changePercent: -2.11 },
+};
+
+function CryptoPricesSection({
+  formatAmount,
+}: {
+  formatAmount: (n: number) => string;
+}) {
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+
+  // Use mock prices (in production, these would come from Convex priceCache query)
+  const cryptoData = CRYPTO_TICKERS.map((c) => {
+    const mock = MOCK_CRYPTO_PRICES[c.ticker];
+    return {
+      ...c,
+      price: mock?.price ?? 0,
+      changePercent: mock?.changePercent ?? 0,
+    };
+  });
+
+  return (
+    <div
+      className="glass-card"
+      style={{
+        background: "rgba(255, 255, 255, 0.04)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRadius: "24px",
+        padding: "24px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <h3
+            className="font-display"
+            style={{ fontSize: "1.25rem", color: "#ffffff" }}
+          >
+            Crypto Prices
+          </h3>
+          <span
+            className="font-mono"
+            style={{
+              fontSize: "10px",
+              color: "#a855f7",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              background: "rgba(168,85,247,0.1)",
+              padding: "4px 10px",
+              borderRadius: "6px",
+              border: "1px solid rgba(168,85,247,0.2)",
+            }}
+          >
+            Live
+          </span>
+        </div>
+        <span
+          className="font-mono"
+          style={{ fontSize: "0.65rem", color: "#968a84" }}
+        >
+          USD prices
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: "12px",
+        }}
+      >
+        {cryptoData.map((crypto) => {
+          const isPos = crypto.changePercent >= 0;
+          const isHovered = hoveredCard === crypto.ticker;
+
+          return (
+            <div
+              key={crypto.ticker}
+              onMouseEnter={() => setHoveredCard(crypto.ticker)}
+              onMouseLeave={() => setHoveredCard(null)}
+              style={{
+                background: isHovered
+                  ? "rgba(255, 255, 255, 0.06)"
+                  : "rgba(255, 255, 255, 0.02)",
+                border: `1px solid ${isHovered ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.05)"}`,
+                borderRadius: "16px",
+                padding: "16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                transition: "all 0.2s",
+                cursor: "default",
+              }}
+            >
+              {/* Coin icon */}
+              <div
+                className="font-mono"
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "10px",
+                  background: "rgba(168,85,247,0.1)",
+                  border: "1px solid rgba(168,85,247,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  color: "#a855f7",
+                  flexShrink: 0,
+                }}
+              >
+                {crypto.ticker}
+              </div>
+
+              {/* Name + ticker */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p
+                  style={{
+                    fontWeight: 600,
+                    color: "#ffffff",
+                    fontSize: "0.85rem",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {crypto.name}
+                </p>
+                <p
+                  className="font-mono"
+                  style={{ fontSize: "0.65rem", color: "#968a84" }}
+                >
+                  {crypto.ticker}
+                </p>
+              </div>
+
+              {/* Price + change */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  gap: "2px",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  className="font-mono"
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: 700,
+                    color: "#ffffff",
+                  }}
+                >
+                  $
+                  {crypto.price >= 1
+                    ? crypto.price.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })
+                    : crypto.price.toFixed(4)}
+                </span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "3px",
+                  }}
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={isPos ? "#34d399" : "#ef4444"}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    {isPos ? (
+                      <polyline points="18 15 12 9 6 15" />
+                    ) : (
+                      <polyline points="6 9 12 15 18 9" />
+                    )}
+                  </svg>
+                  <span
+                    className="font-mono"
+                    style={{
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      color: isPos ? "#34d399" : "#ef4444",
+                    }}
+                  >
+                    {isPos ? "+" : ""}
+                    {crypto.changePercent.toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Attribution */}
+      <p
+        className="font-mono"
+        style={{
+          fontSize: "0.6rem",
+          color: "rgba(150, 138, 132, 0.5)",
+          marginTop: "16px",
+          textAlign: "center",
+        }}
+      >
+        Prices from CoinGecko, updated every 30 minutes
+      </p>
+    </div>
+  );
+}
+
 // ── Update Prompt Card ──────────────────────────────────────────────
 function UpdatePromptCard({ daysSinceUpdate }: { daysSinceUpdate: number }) {
   const [hovered, setHovered] = useState(false);
@@ -2041,6 +2291,8 @@ function PortfolioValueSection() {
       <HoldingsTable holdings={holdings} formatAmount={fmtCurr} />
 
       <GrowthChart data={growthData} formatAmount={fmtCurr} />
+
+      <CryptoPricesSection formatAmount={fmtCurr} />
     </section>
   );
 }

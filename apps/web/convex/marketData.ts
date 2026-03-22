@@ -194,8 +194,125 @@ export const getManualAssetTickers = internalQuery({
   },
 });
 
+// ── CoinGecko crypto price types ────────────────────────────────────
+interface CoinGeckoPriceData {
+  usd?: number;
+  ngn?: number;
+  gbp?: number;
+  usd_24h_change?: number;
+  ngn_24h_change?: number;
+  gbp_24h_change?: number;
+}
+
+interface CoinGeckoPriceResponse {
+  [coinId: string]: CoinGeckoPriceData;
+}
+
+// CoinGecko ID → ticker symbol mapping
+const COINGECKO_ID_MAP: Record<string, string> = {
+  bitcoin: "BTC",
+  ethereum: "ETH",
+  solana: "SOL",
+  cardano: "ADA",
+  ripple: "XRP",
+  dogecoin: "DOGE",
+  binancecoin: "BNB",
+  polkadot: "DOT",
+};
+
+// ── fetchCryptoPrices: fetch crypto prices from CoinGecko (free, no key) ──
+// CoinGecko API (free, no key needed)
+// Endpoint: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,ripple,dogecoin&vs_currencies=usd,ngn,gbp&include_24hr_change=true
+export const fetchCryptoPrices = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const coinIds = Object.keys(COINGECKO_ID_MAP).join(",");
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd,ngn,gbp&include_24hr_change=true`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "WealthMotley/1.0",
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`CoinGecko returned ${response.status}`);
+        return { success: false, updated: 0 };
+      }
+
+      const data: CoinGeckoPriceResponse = await response.json();
+      let updated = 0;
+
+      for (const [coinId, ticker] of Object.entries(COINGECKO_ID_MAP)) {
+        const priceData = data[coinId];
+        if (!priceData || !priceData.usd) continue;
+
+        const price = priceData.usd;
+        const changePercent = priceData.usd_24h_change ?? 0;
+        const previousClose =
+          changePercent !== 0
+            ? price / (1 + changePercent / 100)
+            : price;
+        const change = price - previousClose;
+
+        await ctx.runMutation(internal.marketData.upsertPriceCache, {
+          ticker,
+          price: Math.round(price * 100) / 100,
+          change: Math.round(change * 100) / 100,
+          changePercent: Math.round(changePercent * 100) / 100,
+          currency: "USD",
+          previousClose: Math.round(previousClose * 100) / 100,
+        });
+
+        // Also store NGN and GBP prices as separate cache entries
+        if (priceData.ngn) {
+          const ngnChangePercent = priceData.ngn_24h_change ?? changePercent;
+          const ngnPrevClose =
+            ngnChangePercent !== 0
+              ? priceData.ngn / (1 + ngnChangePercent / 100)
+              : priceData.ngn;
+          await ctx.runMutation(internal.marketData.upsertPriceCache, {
+            ticker: `${ticker}-NGN`,
+            price: Math.round(priceData.ngn * 100) / 100,
+            change: Math.round((priceData.ngn - ngnPrevClose) * 100) / 100,
+            changePercent: Math.round(ngnChangePercent * 100) / 100,
+            currency: "NGN",
+            previousClose: Math.round(ngnPrevClose * 100) / 100,
+          });
+        }
+
+        if (priceData.gbp) {
+          const gbpChangePercent = priceData.gbp_24h_change ?? changePercent;
+          const gbpPrevClose =
+            gbpChangePercent !== 0
+              ? priceData.gbp / (1 + gbpChangePercent / 100)
+              : priceData.gbp;
+          await ctx.runMutation(internal.marketData.upsertPriceCache, {
+            ticker: `${ticker}-GBP`,
+            price: Math.round(priceData.gbp * 100) / 100,
+            change: Math.round((priceData.gbp - gbpPrevClose) * 100) / 100,
+            changePercent: Math.round(gbpChangePercent * 100) / 100,
+            currency: "GBP",
+            previousClose: Math.round(gbpPrevClose * 100) / 100,
+          });
+        }
+
+        updated++;
+      }
+
+      return { success: true, updated };
+    } catch (error) {
+      console.error("CoinGecko fetch error:", error);
+      return { success: false, updated: 0 };
+    }
+  },
+});
+
 // ── refreshAllUserPrices: cron-friendly action to refresh all users ──
-// Iterates all users and refreshes their portfolio prices.
+// Iterates all users and refreshes their portfolio prices,
+// then also refreshes crypto prices from CoinGecko.
 export const refreshAllUserPrices = internalAction({
   args: {},
   handler: async (ctx) => {
@@ -212,6 +329,20 @@ export const refreshAllUserPrices = internalAction({
       } catch (error) {
         console.error(`Failed to refresh prices for user ${userId}:`, error);
       }
+    }
+
+    // Also refresh crypto prices from CoinGecko (free, no API key needed)
+    try {
+      const cryptoResult = await ctx.runAction(
+        internal.marketData.fetchCryptoPrices,
+        {}
+      );
+      if (cryptoResult.success) {
+        totalUpdated += cryptoResult.updated;
+        console.log(`CoinGecko: refreshed ${cryptoResult.updated} crypto prices`);
+      }
+    } catch (error) {
+      console.error("Failed to refresh crypto prices from CoinGecko:", error);
     }
 
     return { success: true, totalTickersUpdated: totalUpdated };

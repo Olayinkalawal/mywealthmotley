@@ -724,6 +724,259 @@ function CurrencyBreakdown() {
   );
 }
 
+// ── Market Snapshot (Economic Indicators) ──────────────────────────
+
+interface EconomicIndicator {
+  indicator: string;
+  value: number;
+  unit: string;
+  label: string;
+  source: string;
+  date: string;
+  trend: "up" | "down" | "flat";
+}
+
+const MOCK_INDICATORS: EconomicIndicator[] = [
+  {
+    indicator: "US_10Y_YIELD",
+    value: 4.25,
+    unit: "%",
+    label: "US 10Y Treasury",
+    source: "FRED",
+    date: "2026-03-20",
+    trend: "up",
+  },
+  {
+    indicator: "UK_BASE_RATE",
+    value: 4.5,
+    unit: "%",
+    label: "UK Base Rate",
+    source: "Bank of England",
+    date: "2026-03-01",
+    trend: "flat",
+  },
+  {
+    indicator: "NG_INFLATION",
+    value: 33.2,
+    unit: "%",
+    label: "NG Inflation",
+    source: "CBN",
+    date: "2026-02-01",
+    trend: "down",
+  },
+  {
+    indicator: "FED_RATE",
+    value: 5.25,
+    unit: "%",
+    label: "Fed Funds Rate",
+    source: "FRED",
+    date: "2026-03-01",
+    trend: "flat",
+  },
+];
+
+function TrendArrow({ trend }: { trend: "up" | "down" | "flat" }) {
+  if (trend === "up") {
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#2ecc71"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="18 15 12 9 6 15" />
+      </svg>
+    );
+  }
+  if (trend === "down") {
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#e74c3c"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#968a84"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function MarketSnapshotSection({
+  indicators,
+}: {
+  indicators: EconomicIndicator[];
+}) {
+  return (
+    <section style={{ marginBottom: "48px" }}>
+      {/* Section heading */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          marginBottom: "16px",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "'DynaPuff', cursive",
+            fontSize: "1.25rem",
+            color: "#ffb347",
+          }}
+        >
+          Market Snapshot
+        </span>
+        <span
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "0.65rem",
+            color: "#968a84",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Updated daily
+        </span>
+      </div>
+
+      {/* Indicator cards grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: "16px",
+        }}
+      >
+        {indicators.map((ind) => (
+          <div
+            key={ind.indicator}
+            style={{
+              background: "rgba(255, 255, 255, 0.04)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "20px",
+              padding: "20px",
+              position: "relative",
+              overflow: "hidden",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+          >
+            {/* Subtle glass highlight */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent 0%, rgba(255,179,71,0.2) 50%, transparent 100%)",
+              }}
+            />
+
+            {/* Indicator name */}
+            <div
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.7rem",
+                color: "#968a84",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: "10px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {ind.label}
+            </div>
+
+            {/* Value + trend */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "1.5rem",
+                  fontWeight: 700,
+                  color: "#ffffff",
+                  lineHeight: 1,
+                }}
+              >
+                {ind.value.toFixed(ind.unit === "index" ? 1 : 2)}
+                <span
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: 400,
+                    color: "#968a84",
+                    marginLeft: "2px",
+                  }}
+                >
+                  {ind.unit}
+                </span>
+              </span>
+              <TrendArrow trend={ind.trend} />
+            </div>
+
+            {/* Source */}
+            <div
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.6rem",
+                color: "#5a524d",
+                marginTop: "10px",
+              }}
+            >
+              {ind.source}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Attribution */}
+      <div
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "0.6rem",
+          color: "#5a524d",
+          textAlign: "right",
+          marginTop: "10px",
+        }}
+      >
+        Data from FRED/CBN/BoE. Updated daily.
+      </div>
+    </section>
+  );
+}
+
 // ── Financial News Types & Data ────────────────────────────────────
 
 type NewsCategory = "bonds" | "markets" | "policy" | "savings" | "crypto";
@@ -1055,6 +1308,10 @@ export default function DashboardPage() {
     api.transactions.getTransactionsByCategory,
     isAuthenticated ? { startDate, endDate } : "skip",
   );
+  const economicIndicators = useQuery(
+    api.economicData.getIndicators,
+    isAuthenticated ? {} : "skip",
+  );
 
   // ── Loading states ─────────────────────────────────────────────
   const isLoadingSpending = spendingSummary === undefined;
@@ -1111,6 +1368,57 @@ export default function DashboardPage() {
       .sort((a, b) => parseFloat(b.width) - parseFloat(a.width))
       .slice(0, 5);
   }, [categoryBreakdown, currency]);
+
+  // ── Build market snapshot indicators ──────────────────────────
+  const marketIndicators = useMemo<EconomicIndicator[]>(() => {
+    if (!economicIndicators || economicIndicators.length === 0) {
+      return MOCK_INDICATORS;
+    }
+
+    // Map DB records to our display type, preserving mock trend for now
+    const trendMap: Record<string, "up" | "down" | "flat"> = {
+      US_10Y_YIELD: "up",
+      UK_BASE_RATE: "flat",
+      NG_INFLATION: "down",
+      FED_RATE: "flat",
+    };
+
+    // Short label map for compact display
+    const shortLabelMap: Record<string, string> = {
+      US_10Y_YIELD: "US 10Y Treasury",
+      UK_BASE_RATE: "UK Base Rate",
+      NG_INFLATION: "NG Inflation",
+      FED_RATE: "Fed Funds Rate",
+      US_CPI: "US CPI",
+    };
+
+    // Filter to the 4 we want to display, in order
+    const displayOrder = ["US_10Y_YIELD", "UK_BASE_RATE", "NG_INFLATION", "FED_RATE"];
+
+    return displayOrder
+      .map((key) => {
+        const dbRecord = economicIndicators.find(
+          (r: { indicator: string }) => r.indicator === key
+        );
+        const mock = MOCK_INDICATORS.find((m) => m.indicator === key);
+
+        if (dbRecord) {
+          return {
+            indicator: dbRecord.indicator,
+            value: dbRecord.value,
+            unit: dbRecord.unit,
+            label: shortLabelMap[dbRecord.indicator] || dbRecord.label,
+            source: dbRecord.source,
+            date: dbRecord.date,
+            trend: trendMap[dbRecord.indicator] || ("flat" as const),
+          };
+        }
+
+        // Fallback to mock if somehow missing from DB
+        return mock || MOCK_INDICATORS[0];
+      })
+      .filter(Boolean) as EconomicIndicator[];
+  }, [economicIndicators]);
 
   const [addFlowClicked, setAddFlowClicked] = useState(false);
 
@@ -1317,6 +1625,9 @@ export default function DashboardPage() {
             isLoading={isLoadingSpending}
           />
         </section>
+
+        {/* Market Snapshot - Economic Indicators */}
+        <MarketSnapshotSection indicators={marketIndicators} />
 
         {/* Dashboard Content: Spending + Asset Allocation + Automations */}
         <section

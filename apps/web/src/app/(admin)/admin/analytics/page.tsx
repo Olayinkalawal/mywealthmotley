@@ -34,9 +34,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { useQuery } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
 
 // ---------------------------------------------------------------------------
-// Mock Data
+// Mock Data (charts that need time-series — kept until we have historical snapshots)
 // ---------------------------------------------------------------------------
 
 const MRR_DATA = [
@@ -94,50 +96,19 @@ const RETENTION_COHORTS = [
   { cohort: "W4 (Mar 17)", week1: 100, week2: 70, week3: null, week4: null },
 ];
 
-const TOP_COUNTRIES = [
-  {
-    country: "Nigeria",
-    flag: "\u{1F1F3}\u{1F1EC}",
-    users: 1936,
-    revenue: "\u20A6319,760",
-    pct: 68,
-  },
-  {
-    country: "United Kingdom",
-    flag: "\u{1F1EC}\u{1F1E7}",
-    users: 512,
-    revenue: "\u00A31,890",
-    pct: 18,
-  },
-  {
-    country: "United States",
-    flag: "\u{1F1FA}\u{1F1F8}",
-    users: 228,
-    revenue: "$680",
-    pct: 8,
-  },
-  {
-    country: "Ghana",
-    flag: "\u{1F1EC}\u{1F1ED}",
-    users: 85,
-    revenue: "GH\u20B5420",
-    pct: 3,
-  },
-  {
-    country: "Canada",
-    flag: "\u{1F1E8}\u{1F1E6}",
-    users: 57,
-    revenue: "CA$310",
-    pct: 2,
-  },
-  {
-    country: "Other",
-    flag: "\u{1F30D}",
-    users: 29,
-    revenue: "\u20A612,500",
-    pct: 1,
-  },
-];
+// ── Country code to display name / flag map ─────────────────────────────
+
+const COUNTRY_META: Record<string, { name: string; flag: string }> = {
+  NG: { name: "Nigeria", flag: "\u{1F1F3}\u{1F1EC}" },
+  GB: { name: "United Kingdom", flag: "\u{1F1EC}\u{1F1E7}" },
+  US: { name: "United States", flag: "\u{1F1FA}\u{1F1F8}" },
+  CA: { name: "Canada", flag: "\u{1F1E8}\u{1F1E6}" },
+  GH: { name: "Ghana", flag: "\u{1F1EC}\u{1F1ED}" },
+  KE: { name: "Kenya", flag: "\u{1F1F0}\u{1F1EA}" },
+  ZA: { name: "South Africa", flag: "\u{1F1FF}\u{1F1E6}" },
+  DE: { name: "Germany", flag: "\u{1F1E9}\u{1F1EA}" },
+  AE: { name: "UAE", flag: "\u{1F1E6}\u{1F1EA}" },
+};
 
 // ---------------------------------------------------------------------------
 // Skeleton
@@ -201,15 +172,31 @@ function RetentionCell({ value }: { value: number | null }) {
 // ---------------------------------------------------------------------------
 
 export default function AdminAnalyticsPage() {
-  const [loading, setLoading] = React.useState(true);
+  const stats = useQuery(api.admin.getDashboardStats);
   const [period, setPeriod] = React.useState("30d");
 
-  React.useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, []);
+  if (stats === undefined) return <AnalyticsSkeleton />;
 
-  if (loading) return <AnalyticsSkeleton />;
+  // Build country table from real data
+  const totalUsers = stats.totalUsers || 1; // avoid division by zero
+  const countryRows = Object.entries(stats.usersByCountry)
+    .sort(([, a], [, b]) => b - a)
+    .map(([code, count]) => {
+      const meta = COUNTRY_META[code] ?? { name: code, flag: "\u{1F30D}" };
+      return {
+        country: meta.name,
+        flag: meta.flag,
+        users: count,
+        pct: Math.round((count / totalUsers) * 100),
+      };
+    });
+
+  // Update user growth chart's last data point to reflect real count
+  const userGrowthDataWithReal = USER_GROWTH_DATA.map((d, i) =>
+    i === USER_GROWTH_DATA.length - 1
+      ? { ...d, users: stats.totalUsers }
+      : d
+  );
 
   return (
     <div className="space-y-6">
@@ -220,6 +207,7 @@ export default function AdminAnalyticsPage() {
         </h2>
         <p className="text-sm text-muted-foreground">
           Deep-dive into WealthMotley performance and user behaviour.
+          {" "}<span className="text-muted-foreground/60">({stats.totalUsers} total users)</span>
         </p>
       </div>
 
@@ -232,13 +220,13 @@ export default function AdminAnalyticsPage() {
           <TabsTrigger value="ytd">YTD</TabsTrigger>
         </TabsList>
 
-        {/* All periods show the same mock data for now */}
+        {/* All periods show the same data for now (no time-series snapshots) */}
         {["7d", "30d", "90d", "ytd"].map((p) => (
           <TabsContent key={p} value={p}>
             <div className="space-y-6">
               {/* Revenue + User Growth Charts */}
               <div className="grid gap-6 lg:grid-cols-2">
-                {/* MRR Chart */}
+                {/* MRR Chart (mock time-series, kept for now) */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Monthly Recurring Revenue</CardTitle>
@@ -283,12 +271,12 @@ export default function AdminAnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                {/* User Growth Chart */}
+                {/* User Growth Chart (mock time-series, last point = real total) */}
                 <Card>
                   <CardHeader>
                     <CardTitle>User Growth</CardTitle>
                     <CardDescription>
-                      Cumulative registered users
+                      Cumulative registered users ({stats.totalUsers} current)
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -296,7 +284,7 @@ export default function AdminAnalyticsPage() {
                       config={userGrowthConfig}
                       className="h-[260px] w-full"
                     >
-                      <AreaChart data={USER_GROWTH_DATA} accessibilityLayer>
+                      <AreaChart data={userGrowthDataWithReal} accessibilityLayer>
                         <CartesianGrid vertical={false} />
                         <XAxis
                           dataKey="month"
@@ -347,7 +335,7 @@ export default function AdminAnalyticsPage() {
 
               {/* Feature Adoption + Churn */}
               <div className="grid gap-6 lg:grid-cols-2">
-                {/* Feature Adoption */}
+                {/* Feature Adoption (mock — no per-feature tracking yet) */}
                 <Card>
                   <CardHeader>
                     <div className="flex items-center gap-2">
@@ -397,7 +385,7 @@ export default function AdminAnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Churn + Retention Cohort */}
+                {/* Churn + Retention Cohort (mock — no cohort tracking yet) */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Churn Rate</CardTitle>
@@ -469,7 +457,7 @@ export default function AdminAnalyticsPage() {
                 </Card>
               </div>
 
-              {/* Top Countries */}
+              {/* Top Countries — REAL DATA */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
@@ -477,52 +465,52 @@ export default function AdminAnalyticsPage() {
                     <CardTitle>Top Countries</CardTitle>
                   </div>
                   <CardDescription>
-                    Users and revenue by country
+                    User distribution by country (real data)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-muted-foreground">
-                          <th className="p-2 text-left font-medium">
-                            Country
-                          </th>
-                          <th className="p-2 text-right font-medium">
-                            Users
-                          </th>
-                          <th className="p-2 text-right font-medium">
-                            Revenue
-                          </th>
-                          <th className="p-2 text-right font-medium">
-                            Share
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {TOP_COUNTRIES.map((row) => (
-                          <tr
-                            key={row.country}
-                            className="border-b last:border-0"
-                          >
-                            <td className="p-2 font-medium">
-                              <span className="mr-2">{row.flag}</span>
-                              {row.country}
-                            </td>
-                            <td className="p-2 text-right tabular-nums">
-                              {row.users.toLocaleString()}
-                            </td>
-                            <td className="p-2 text-right tabular-nums">
-                              {row.revenue}
-                            </td>
-                            <td className="p-2 text-right">
-                              <Badge variant="outline">{row.pct}%</Badge>
-                            </td>
+                  {countryRows.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">
+                      No user data available yet.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-muted-foreground">
+                            <th className="p-2 text-left font-medium">
+                              Country
+                            </th>
+                            <th className="p-2 text-right font-medium">
+                              Users
+                            </th>
+                            <th className="p-2 text-right font-medium">
+                              Share
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {countryRows.map((row) => (
+                            <tr
+                              key={row.country}
+                              className="border-b last:border-0"
+                            >
+                              <td className="p-2 font-medium">
+                                <span className="mr-2">{row.flag}</span>
+                                {row.country}
+                              </td>
+                              <td className="p-2 text-right tabular-nums">
+                                {row.users.toLocaleString()}
+                              </td>
+                              <td className="p-2 text-right">
+                                <Badge variant="outline">{row.pct}%</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

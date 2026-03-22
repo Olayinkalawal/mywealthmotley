@@ -8,16 +8,19 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as aiSholz from "../aiSholz.js";
 import type * as allMyMoney from "../allMyMoney.js";
 import type * as blackTax from "../blackTax.js";
 import type * as budgets from "../budgets.js";
 import type * as crons from "../crons.js";
 import type * as dataRetention from "../dataRetention.js";
+import type * as email from "../email.js";
 import type * as exchangeRates from "../exchangeRates.js";
 import type * as financialNews from "../financialNews.js";
 import type * as http from "../http.js";
 import type * as japa from "../japa.js";
+import type * as marketData from "../marketData.js";
 import type * as mono from "../mono.js";
 import type * as notifications from "../notifications.js";
 import type * as savingsGoals from "../savingsGoals.js";
@@ -33,16 +36,19 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   aiSholz: typeof aiSholz;
   allMyMoney: typeof allMyMoney;
   blackTax: typeof blackTax;
   budgets: typeof budgets;
   crons: typeof crons;
   dataRetention: typeof dataRetention;
+  email: typeof email;
   exchangeRates: typeof exchangeRates;
   financialNews: typeof financialNews;
   http: typeof http;
   japa: typeof japa;
+  marketData: typeof marketData;
   mono: typeof mono;
   notifications: typeof notifications;
   savingsGoals: typeof savingsGoals;

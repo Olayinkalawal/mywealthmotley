@@ -316,6 +316,17 @@ export default defineSchema({
     .index("by_region", ["region"])
     .index("by_publishedAt", ["publishedAt"]),
 
+  // ── Cached stock/ETF prices ──────────────────────────────────────
+  priceCache: defineTable({
+    ticker: v.string(),
+    price: v.number(),
+    change: v.number(),
+    changePercent: v.number(),
+    currency: v.string(),
+    previousClose: v.number(),
+    fetchedAt: v.number(),
+  }).index("by_ticker", ["ticker"]),
+
   // ── Waitlist signups ─────────────────────────────────────────────
   waitlist: defineTable({
     email: v.string(),

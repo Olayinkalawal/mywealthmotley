@@ -1,5 +1,13 @@
 import { v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+
+// Notification types that trigger an email in addition to in-app notification
+const EMAIL_NOTIFICATION_TYPES = new Set([
+  "spending_alert",
+  "budget_warning",
+  "savings_milestone",
+]);
 
 // ── Get latest 20 notifications for current user, newest first ──────
 export const getNotifications = query({
@@ -100,6 +108,7 @@ export const markAllAsRead = mutation({
 });
 
 // ── Create a notification (called by other backend functions) ───────
+// Also sends an email for important notification types via Resend.
 export const createNotification = internalMutation({
   args: {
     userId: v.id("users"),
@@ -109,7 +118,8 @@ export const createNotification = internalMutation({
     link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("notifications", {
+    // 1. Insert the in-app notification
+    const notificationId = await ctx.db.insert("notifications", {
       userId: args.userId,
       title: args.title,
       message: args.message,
@@ -118,6 +128,41 @@ export const createNotification = internalMutation({
       link: args.link,
       createdAt: Date.now(),
     });
+
+    // 2. Send email for important notification types
+    if (EMAIL_NOTIFICATION_TYPES.has(args.type)) {
+      const user = await ctx.db.get(args.userId);
+      if (user) {
+        // Schedule the email send as an action (mutations can't call actions directly)
+        await ctx.scheduler.runAfter(0, internal.email.sendEmail, {
+          to: user.email,
+          subject: args.title,
+          html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0d0b0a;font-family:Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:32px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#ffb347">my</span><span style="font-size:24px;font-weight:bold;color:#ffffff">WealthMotley</span>
+  </div>
+  <div style="background:#1a1614;border:1px solid #2a2420;border-radius:16px;padding:32px 24px;color:#e5e5e5;font-size:14px;line-height:1.6">
+    <h2 style="color:#ffffff;margin:0 0 16px;font-size:18px">${args.title}</h2>
+    <p>Hi ${user.firstName},</p>
+    <p>${args.message}</p>
+    ${args.link ? `<div style="text-align:center;margin-top:24px"><a href="https://mywealthmotley.com${args.link}" style="display:inline-block;padding:12px 32px;background:#ffb347;color:#0d0b0a;text-decoration:none;border-radius:8px;font-weight:bold">View Details</a></div>` : ""}
+  </div>
+  <div style="text-align:center;margin-top:24px;color:#968a84;font-size:11px">
+    <p>myWealthMotley &mdash; Financial education for Africans</p>
+    <p>This is an automated notification. <a href="https://mywealthmotley.com/settings" style="color:#ffb347">Manage preferences</a></p>
+  </div>
+</div>
+</body>
+</html>`,
+        });
+      }
+    }
+
+    return notificationId;
   },
 });
 

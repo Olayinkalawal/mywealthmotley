@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 // ── Stat Card ───────────────────────────────────────────────────────────
 
@@ -14,7 +16,7 @@ function StatCard({
 }: {
   label: string;
   value: string;
-  growth: string;
+  growth?: string;
   color?: string;
   glowColor: string;
 }) {
@@ -33,50 +35,149 @@ function StatCard({
       >
         {value}
       </p>
-      <div className="mt-4 flex items-center gap-2 text-xs wm-mono">
-        <span className="text-[#34d399] flex items-center bg-[#34d399]/10 px-1.5 py-0.5 rounded">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="mr-1"
-          >
-            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-            <polyline points="16 7 22 7 22 13" />
-          </svg>
-          {growth}
-        </span>
-        <span className="text-[#968a84]">vs last month</span>
+      {growth && (
+        <div className="mt-4 flex items-center gap-2 text-xs wm-mono">
+          <span className="text-[#34d399] flex items-center bg-[#34d399]/10 px-1.5 py-0.5 rounded">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="mr-1"
+            >
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+              <polyline points="16 7 22 7 22 13" />
+            </svg>
+            {growth}
+          </span>
+          <span className="text-[#968a84]">vs last month</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Skeleton Loader ─────────────────────────────────────────────────────
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="h-8 w-48 bg-white/5 rounded animate-pulse" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-32 bg-white/5 rounded-[24px] animate-pulse" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="h-[300px] bg-white/5 rounded-[24px] animate-pulse lg:col-span-2" />
+        <div className="h-[300px] bg-white/5 rounded-[24px] animate-pulse" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-64 bg-white/5 rounded-[24px] animate-pulse" />
+        <div className="h-64 bg-white/5 rounded-[24px] animate-pulse" />
       </div>
     </div>
   );
 }
 
+// ── Helper: format large numbers ────────────────────────────────────────
+
+function fmtNumber(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
+  return n.toLocaleString();
+}
+
+// ── Country code to full name map ───────────────────────────────────────
+
+const COUNTRY_NAMES: Record<string, string> = {
+  NG: "Nigeria",
+  GB: "United Kingdom",
+  US: "United States",
+  CA: "Canada",
+  GH: "Ghana",
+  KE: "Kenya",
+  ZA: "South Africa",
+  DE: "Germany",
+  AE: "UAE",
+};
+
+const COUNTRY_COLORS: Record<string, string> = {
+  NG: "#34d399",
+  GB: "#00247d",
+  US: "#3c3b6e",
+  CA: "#ef4444",
+  GH: "#ffb347",
+  KE: "#a855f7",
+  ZA: "#3b82f6",
+};
+
 // ── Page ────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const [loading, setLoading] = React.useState(true);
+  const stats = useQuery(api.admin.getDashboardStats);
+  const recentActivity = useQuery(api.admin.getRecentActivity);
 
-  React.useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 400);
-    return () => clearTimeout(t);
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 bg-white/5 rounded animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-32 bg-white/5 rounded-[24px] animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
+  if (stats === undefined) {
+    return <DashboardSkeleton />;
   }
+
+  // Derive premium user count from tier breakdown
+  const premiumCount = (stats.usersByTier["pro"] ?? 0) + (stats.usersByTier["premium"] ?? 0);
+
+  // Build sorted country list for the geography donut
+  const countryEntries = Object.entries(stats.usersByCountry)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
+  const topCountry = countryEntries[0]?.[0] ?? "NG";
+
+  // Calculate percentages for country donut
+  const countryPercentages = countryEntries.map(([code, count]) => ({
+    code,
+    name: COUNTRY_NAMES[code] ?? code,
+    pct: stats.totalUsers > 0 ? Math.round((count / stats.totalUsers) * 100) : 0,
+    color: COUNTRY_COLORS[code] ?? "#968a84",
+  }));
+
+  // Build donut SVG arcs from country percentages
+  const donutSegments = (() => {
+    const total = countryPercentages.reduce((sum, c) => sum + c.pct, 0);
+    const circumference = 2 * Math.PI * 40; // r=40
+    let offset = 0;
+    return countryPercentages.map((c) => {
+      const fraction = total > 0 ? c.pct / total : 0;
+      const dash = fraction * circumference;
+      const gap = circumference - dash;
+      const segment = { ...c, dasharray: `${dash} ${gap}`, offset: -offset };
+      offset += dash;
+      return segment;
+    });
+  })();
+
+  // Build activity feed items from real notifications
+  const activityItems = (recentActivity?.notifications ?? []).slice(0, 4).map((n: any) => {
+    const ageMs = Date.now() - (n.createdAt ?? 0);
+    const ageMins = Math.floor(ageMs / 60000);
+    let timeLabel = "Just now";
+    if (ageMins > 60 * 24) timeLabel = `${Math.floor(ageMins / (60 * 24))}d ago`;
+    else if (ageMins > 60) timeLabel = `${Math.floor(ageMins / 60)}h ago`;
+    else if (ageMins > 0) timeLabel = `${ageMins} mins ago`;
+
+    // Map notification type to icon + color
+    const typeMap: Record<string, { icon: string; color: string }> = {
+      system: { icon: "check", color: "#34d399" },
+      tip: { icon: "star", color: "#a855f7" },
+      spending_alert: { icon: "alert", color: "#ef4444" },
+      budget_warning: { icon: "alert", color: "#ffb347" },
+      savings_milestone: { icon: "dollar", color: "#34d399" },
+      japa_update: { icon: "star", color: "#3b82f6" },
+    };
+    const { icon, color } = typeMap[n.type] ?? { icon: "check", color: "#968a84" };
+
+    return { icon, color, text: n.title, time: timeLabel };
+  });
 
   return (
     <div className="flex flex-col gap-6" style={{ animation: "wm-fade-in 0.3s ease-out" }}>
@@ -102,15 +203,32 @@ export default function AdminPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard label="Total Users" value="142,854" growth="+12.5%" glowColor="rgba(59,130,246,0.1)" />
-        <StatCard label="Active MAU" value="89,211" growth="+8.2%" glowColor="rgba(255,179,71,0.1)" />
-        <StatCard label="Premium Subs" value="12,450" growth="+4.1%" glowColor="rgba(168,85,247,0.1)" />
-        <StatCard label="Monthly Rec. Revenue" value="N48.5M" growth="+18.4%" color="#34d399" glowColor="rgba(52,211,153,0.1)" />
+        <StatCard
+          label="Total Users"
+          value={fmtNumber(stats.totalUsers)}
+          glowColor="rgba(59,130,246,0.1)"
+        />
+        <StatCard
+          label="Active (30d)"
+          value={fmtNumber(stats.activeUsers)}
+          glowColor="rgba(255,179,71,0.1)"
+        />
+        <StatCard
+          label="Premium Subs"
+          value={fmtNumber(premiumCount)}
+          glowColor="rgba(168,85,247,0.1)"
+        />
+        <StatCard
+          label="AI Conversations"
+          value={fmtNumber(stats.totalConversations)}
+          color="#34d399"
+          glowColor="rgba(52,211,153,0.1)"
+        />
       </div>
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Signup Growth */}
+        {/* Signup Growth — keeping mock SVG chart (no time-series data yet) */}
         <div className="wm-glass rounded-[24px] p-6 lg:col-span-2 flex flex-col min-h-[300px]">
           <div className="flex justify-between items-center mb-6">
             <h2 className="wm-heading text-lg text-white">Signup Growth (30 Days)</h2>
@@ -140,39 +258,55 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* User Geography */}
+        {/* User Geography — real data */}
         <div className="wm-glass rounded-[24px] p-6 flex flex-col">
           <h2 className="wm-heading text-lg text-white mb-6">User Geography</h2>
           <div className="flex-1 flex items-center justify-center relative">
             <svg viewBox="0 0 100 100" className="w-48 h-48 transform -rotate-90">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#3c3b6e" strokeWidth="12" strokeDasharray="94.2 251.2" strokeDashoffset="-213.5" />
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#00247d" strokeWidth="12" strokeDasharray="157 251.2" strokeDashoffset="-56.5" />
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#34d399" strokeWidth="12" strokeDasharray="376.8 251.2" />
+              {donutSegments.reverse().map((seg, i) => (
+                <circle
+                  key={seg.code}
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke={seg.color}
+                  strokeWidth="12"
+                  strokeDasharray={seg.dasharray}
+                  strokeDashoffset={seg.offset}
+                />
+              ))}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="wm-mono text-xs text-[#968a84] uppercase tracking-widest">Top</span>
-              <span className="wm-mono text-2xl font-bold text-white">NG</span>
+              <span className="wm-mono text-2xl font-bold text-white">{topCountry}</span>
             </div>
           </div>
           <div className="mt-6 space-y-3 wm-mono text-xs">
-            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm bg-[#34d399]" />Nigeria</span><span className="text-white">60%</span></div>
-            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm bg-[#00247d]" />United Kingdom</span><span className="text-white">25%</span></div>
-            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm bg-[#3c3b6e]" />United States</span><span className="text-white">15%</span></div>
+            {countryPercentages.map((c) => (
+              <div key={c.code} className="flex justify-between items-center">
+                <span className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: c.color }} />
+                  {c.name}
+                </span>
+                <span className="text-white">{c.pct}%</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Funnel + Live Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Conversion Funnel */}
+        {/* Conversion Funnel — keeping mock data (no funnel events tracked yet) */}
         <div className="wm-glass rounded-[24px] p-6">
-          <h2 className="wm-heading text-lg text-white mb-6">Conversion Funnel</h2>
+          <h2 className="wm-heading text-lg text-white mb-6">Engagement Funnel</h2>
           <div className="space-y-4">
             {[
-              { label: "App Install", pct: "100%", val: "24,050", width: "100%", bg: "bg-[#ffb347]/40" },
-              { label: "Signup Completed", pct: "68%", val: "16,354", width: "68%", bg: "bg-[#ffb347]/60" },
-              { label: "KYC Verified", pct: "45%", val: "10,822", width: "45%", bg: "bg-[#ffb347]/80" },
-              { label: "First Deposit", pct: "32%", val: "7,696", width: "32%", bg: "bg-[#ffb347]", glow: true },
+              { label: "Registered", pct: "100%", val: fmtNumber(stats.totalUsers), width: "100%", bg: "bg-[#ffb347]/40" },
+              { label: "Onboarding Complete", pct: stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) + "%" : "0%", val: fmtNumber(stats.activeUsers), width: stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) + "%" : "0%", bg: "bg-[#ffb347]/60" },
+              { label: "Created Budget", pct: stats.totalUsers > 0 ? Math.round((stats.totalBudgets / stats.totalUsers) * 100) + "%" : "0%", val: fmtNumber(stats.totalBudgets), width: stats.totalUsers > 0 ? Math.round((stats.totalBudgets / stats.totalUsers) * 100) + "%" : "0%", bg: "bg-[#ffb347]/80" },
+              { label: "Used AI Sholz", pct: stats.totalUsers > 0 ? Math.round((stats.totalConversations / stats.totalUsers) * 100) + "%" : "0%", val: fmtNumber(stats.totalConversations), width: stats.totalUsers > 0 ? Math.round((stats.totalConversations / stats.totalUsers) * 100) + "%" : "0%", bg: "bg-[#ffb347]", glow: true },
             ].map((item) => (
               <div key={item.label} className="relative">
                 <div className="flex justify-between wm-mono text-xs mb-1 px-2">
@@ -187,7 +321,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Live Activity Feed */}
+        {/* Live Activity Feed — real notification data */}
         <div className="wm-glass rounded-[24px] p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="wm-heading text-lg text-white">Live Activity Feed</h2>
@@ -197,12 +331,10 @@ export default function AdminPage() {
             </span>
           </div>
           <div className="space-y-4 text-sm">
-            {[
-              { icon: "check", color: "#34d399", text: <>KYC Approved for <span className="wm-mono text-[#ffb347]">U-9821</span></>, time: "Just now" },
-              { icon: "dollar", color: "#ffb347", text: <>Large deposit detected: <span className="wm-mono text-[#34d399] font-bold">N2,500,000</span></>, time: "2 mins ago" },
-              { icon: "star", color: "#a855f7", text: <>New Premium Subscription: <span className="wm-mono text-white/80">Sarah J.</span></>, time: "15 mins ago" },
-              { icon: "alert", color: "#ef4444", text: "Failed withdrawal attempt (Insufficient Funds)", time: "42 mins ago" },
-            ].map((item, i) => (
+            {activityItems.length === 0 && (
+              <p className="text-[#968a84] wm-mono text-xs">No recent activity yet.</p>
+            )}
+            {activityItems.map((item: any, i: number) => (
               <div key={i} className="flex items-start gap-4">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border"

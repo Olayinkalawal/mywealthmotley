@@ -497,6 +497,15 @@ export const sendMessage = action({
     }
     const systemPrompt = basePrompt + financialContext;
 
+    // Audit log: record that AI accessed financial context
+    if (userId && financialContext !== NEW_USER_CONTEXT) {
+      await ctx.runMutation(internal.users.logAuditEvent, {
+        userId,
+        action: "ai_financial_context_access",
+        details: "AI chatbot accessed user financial summary",
+      });
+    }
+
     // 4. Call OpenAI
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {

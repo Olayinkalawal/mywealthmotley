@@ -13,6 +13,7 @@ import type * as allMyMoney from "../allMyMoney.js";
 import type * as blackTax from "../blackTax.js";
 import type * as budgets from "../budgets.js";
 import type * as crons from "../crons.js";
+import type * as dataRetention from "../dataRetention.js";
 import type * as exchangeRates from "../exchangeRates.js";
 import type * as http from "../http.js";
 import type * as japa from "../japa.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   blackTax: typeof blackTax;
   budgets: typeof budgets;
   crons: typeof crons;
+  dataRetention: typeof dataRetention;
   exchangeRates: typeof exchangeRates;
   http: typeof http;
   japa: typeof japa;

@@ -12,6 +12,25 @@ async function getCurrentUser(ctx: any) {
     .unique();
 }
 
+// ── Reusable audit log mutation (internal only) ─────────────────────
+export const logAuditEvent = internalMutation({
+  args: {
+    userId: v.id("users"),
+    action: v.string(),
+    details: v.string(),
+    targetUserId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("adminAuditLog", {
+      adminUserId: args.userId,
+      action: args.action,
+      details: args.details,
+      targetUserId: args.targetUserId,
+      timestamp: Date.now(),
+    });
+  },
+});
+
 // ── Get current user by Clerk ID ─────────────────────────────────────
 export const getUser = query({
   args: {},
@@ -267,6 +286,122 @@ export const updateConsent = mutation({
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(user._id, updates);
     }
+  },
+});
+
+// ── Purge all user data (NDPA / UK GDPR right-to-erasure) ───────────
+// Called from the Clerk webhook handler when a user.deleted event fires.
+// Deletes every row the user owns across all tables, then removes
+// the users record itself.
+export const purgeUserData = internalMutation({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+
+    if (!user) {
+      console.log(`[purgeUserData] No user found for clerkId: ${args.clerkId}`);
+      return;
+    }
+
+    const userId = user._id;
+
+    // Helper: collect and delete all docs matching a by_userId index
+    async function deleteByUserId(table: string) {
+      const docs = await (ctx.db as any)
+        .query(table)
+        .withIndex("by_userId", (q: any) => q.eq("userId", userId))
+        .collect();
+      for (const doc of docs) {
+        await ctx.db.delete(doc._id);
+      }
+      return docs.length;
+    }
+
+    let totalDeleted = 0;
+
+    // 1. Transactions
+    totalDeleted += await deleteByUserId("transactions");
+
+    // 2. Mono accounts
+    totalDeleted += await deleteByUserId("monoAccounts");
+
+    // 3. Manual assets
+    totalDeleted += await deleteByUserId("manualAssets");
+
+    // 4. Screenshot imports — also delete remaining storage files
+    const imports = await ctx.db
+      .query("screenshotImports")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+    for (const imp of imports) {
+      if (imp.imageStorageId && !imp.imagePurged) {
+        try {
+          await ctx.storage.delete(imp.imageStorageId as any);
+        } catch {
+          // Storage file may already be gone; continue
+        }
+      }
+      await ctx.db.delete(imp._id);
+    }
+    totalDeleted += imports.length;
+
+    // 5. Budgets — collect IDs first so we can delete budget categories
+    const budgets = await ctx.db
+      .query("budgets")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+    const budgetIds = new Set(budgets.map((b) => b._id));
+    for (const b of budgets) {
+      await ctx.db.delete(b._id);
+    }
+    totalDeleted += budgets.length;
+
+    // 6. Budget categories — by budgetId (no userId index on this table)
+    for (const budgetId of budgetIds) {
+      const cats = await ctx.db
+        .query("budgetCategories")
+        .withIndex("by_budgetId", (q) => q.eq("budgetId", budgetId))
+        .collect();
+      for (const cat of cats) {
+        await ctx.db.delete(cat._id);
+      }
+      totalDeleted += cats.length;
+    }
+
+    // 7. Savings goals
+    totalDeleted += await deleteByUserId("savingsGoals");
+
+    // 8. Black Tax entries
+    totalDeleted += await deleteByUserId("blackTaxEntries");
+
+    // 9. Japa milestones
+    totalDeleted += await deleteByUserId("japaMilestones");
+
+    // 10. AI conversations
+    totalDeleted += await deleteByUserId("aiConversations");
+
+    // 11. Notifications
+    totalDeleted += await deleteByUserId("notifications");
+
+    // 12. Consent records
+    totalDeleted += await deleteByUserId("consentRecords");
+
+    // 13. Net worth snapshots
+    totalDeleted += await deleteByUserId("netWorthSnapshots");
+
+    // 14. Analytics events
+    totalDeleted += await deleteByUserId("analyticsEvents");
+
+    // 15. Finally, delete the user record itself
+    await ctx.db.delete(user._id);
+    totalDeleted += 1;
+
+    console.log(
+      `[purgeUserData] Deleted ${totalDeleted} records for user ${args.clerkId}`
+    );
   },
 });
 

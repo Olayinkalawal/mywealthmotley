@@ -21,6 +21,15 @@ crons.daily(
   {}
 );
 
+// Data retention: anonymize old transactions & purge stale screenshot imports
+// Runs daily at 3:30 UTC (NDPA / UK GDPR compliance)
+crons.daily(
+  "data-retention",
+  { hourUTC: 3, minuteUTC: 30 },
+  internal.dataRetention.runDailyRetention,
+  {}
+);
+
 // TODO: Generate daily net worth snapshots
 // crons.daily(
 //   "net-worth-snapshots",

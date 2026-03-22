@@ -148,6 +148,16 @@ export const analyzeScreenshot = action({
       status: "processing",
     });
 
+    // Resolve the authenticated user for audit logging
+    const identity = await ctx.auth.getUserIdentity();
+    let auditUserId: any = null;
+    if (identity) {
+      const user = await ctx.runQuery(internal.aiSholz.getUserByClerkId, {
+        clerkId: identity.subject,
+      });
+      auditUserId = user?._id ?? null;
+    }
+
     try {
       // Server-side file size validation via storage metadata
       const metadata = await ctx.storage.getMetadata(args.imageStorageId);
@@ -243,6 +253,15 @@ If you cannot identify specific holdings, still return the JSON structure with w
         holdings: normalizedHoldings,
       };
 
+      // Audit log: record successful AI extraction
+      if (auditUserId) {
+        await ctx.runMutation(internal.users.logAuditEvent, {
+          userId: auditUserId,
+          action: "screenshot_import",
+          details: `AI extracted ${normalizedHoldings.length} holdings from screenshot`,
+        });
+      }
+
       // ── Process & Purge: delete the screenshot from storage ──────────
       // Compliance: original images are never stored long-term.
       // Delete BEFORE updating status so the image is gone even if the
@@ -257,6 +276,15 @@ If you cannot identify specific holdings, still return the JSON structure with w
         platform: result.platform,
         imagePurged: true,
       });
+
+      // Audit log: record screenshot purge
+      if (auditUserId) {
+        await ctx.runMutation(internal.users.logAuditEvent, {
+          userId: auditUserId,
+          action: "screenshot_purge",
+          details: "Screenshot image deleted after extraction",
+        });
+      }
 
       return result;
     } catch (error: any) {

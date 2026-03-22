@@ -119,7 +119,16 @@ http.route({
         });
       }
 
-      // TODO: Handle user.deleted - soft delete or anonymize user data
+      // Handle user.deleted — full NDPA / UK GDPR purge
+      if (eventType === "user.deleted") {
+        const { id } = parsedBody.data;
+        if (id) {
+          await ctx.runMutation(internal.users.purgeUserData, {
+            clerkId: id,
+          });
+          console.log(`User data purged for clerkId: ${id}`);
+        }
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200,

@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { useState, useCallback } from "react";
-import { Fire, ShareNetwork, ArrowsClockwise } from "@phosphor-icons/react";
+import {
+  Fire,
+  ShareNetwork,
+  ArrowsClockwise,
+  ShieldCheck,
+} from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -104,6 +109,7 @@ function WmRoastMe() {
   const [isThinking, setIsThinking] = useState(false);
   const [currentRoast, setCurrentRoast] = useState<Roast | null>(null);
   const [lastIndex, setLastIndex] = useState(-1);
+  const [hasConfirmedOptIn, setHasConfirmedOptIn] = useState(false);
 
   const getRandomRoast = useCallback(() => {
     let index: number;
@@ -116,6 +122,21 @@ function WmRoastMe() {
 
   const triggerRoast = useCallback(() => {
     setIsOpen(true);
+
+    if (hasConfirmedOptIn) {
+      // Already opted in — go straight to roast
+      setIsThinking(true);
+      setCurrentRoast(null);
+      setTimeout(() => {
+        setIsThinking(false);
+        setCurrentRoast(getRandomRoast());
+      }, 2000);
+    }
+    // Otherwise the opt-in screen will show inside the dialog
+  }, [getRandomRoast, hasConfirmedOptIn]);
+
+  const handleOptIn = useCallback(() => {
+    setHasConfirmedOptIn(true);
     setIsThinking(true);
     setCurrentRoast(null);
 
@@ -124,6 +145,17 @@ function WmRoastMe() {
       setCurrentRoast(getRandomRoast());
     }, 2000);
   }, [getRandomRoast]);
+
+  const handleMaybeLater = useCallback(() => {
+    setIsOpen(false);
+  }, []);
+
+  const handleTurnOffRoasts = useCallback(() => {
+    setHasConfirmedOptIn(false);
+    setCurrentRoast(null);
+    setIsThinking(false);
+    setIsOpen(false);
+  }, []);
 
   const roastAgain = useCallback(() => {
     setIsThinking(true);
@@ -197,7 +229,58 @@ function WmRoastMe() {
           </DialogHeader>
 
           <AnimatePresence mode="wait">
-            {isThinking ? (
+            {/* ── Opt-in screen (vulnerability check) ── */}
+            {!hasConfirmedOptIn && !isThinking && !currentRoast ? (
+              <motion.div
+                key="opt-in"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="flex flex-col items-center gap-5 rounded-xl border border-[#ffb347]/10 bg-[#0d0b0a]/80 px-6 py-8 text-center backdrop-blur-md"
+              >
+                <div className="flex size-14 items-center justify-center rounded-full bg-[#ffb347]/10">
+                  <ShieldCheck
+                    className="size-7 text-[#ffb347]"
+                    weight="duotone"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <h3
+                    className="text-lg font-semibold text-white"
+                    style={{ fontFamily: "DynaPuff, cursive" }}
+                  >
+                    Before we begin...
+                  </h3>
+                  <p className="text-sm leading-relaxed text-[#968a84]">
+                    Mo&apos;s roasts are meant to be fun and lighthearted.
+                    If you&apos;re going through a tough financial time,
+                    feel free to skip this &mdash; there&apos;s no shame in
+                    that.
+                  </p>
+                </div>
+
+                <div className="flex w-full flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={handleOptIn}
+                    className="flex-1 bg-[#ffb347] text-[#0d0b0a] hover:bg-[#ffb347]/90"
+                    size="lg"
+                  >
+                    <Fire className="size-4" />
+                    Roast Me Anyway
+                  </Button>
+                  <Button
+                    onClick={handleMaybeLater}
+                    variant="outline"
+                    className="flex-1 border-[#968a84]/30 text-[#968a84] hover:bg-[#968a84]/10 hover:text-white"
+                    size="lg"
+                  >
+                    Maybe Later
+                  </Button>
+                </div>
+              </motion.div>
+            ) : isThinking ? (
               <motion.div
                 key="thinking"
                 initial={{ opacity: 0 }}
@@ -237,11 +320,19 @@ function WmRoastMe() {
                   </Button>
                 </div>
 
-                {/* Disclaimer */}
-                <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-                  This is meant to be fun and educational. Mo loves you
-                  really.
-                </p>
+                {/* Disclaimer + turn-off link */}
+                <div className="space-y-1 text-center">
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    This is meant to be fun and educational. Mo loves you
+                    really.
+                  </p>
+                  <button
+                    onClick={handleTurnOffRoasts}
+                    className="text-xs text-[#968a84] underline underline-offset-2 transition-colors hover:text-[#ffb347]"
+                  >
+                    Not in the mood? Turn off roasts
+                  </button>
+                </div>
               </motion.div>
             ) : null}
           </AnimatePresence>

@@ -5,6 +5,7 @@ import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { formatCurrency } from "@/lib/currencies";
 import type { CurrencyCode } from "@/lib/constants";
+import { useUserCurrency } from "@/hooks/use-currency";
 
 // ── Styles (faithful port of react-app-7.js) ──────────────────────
 
@@ -424,6 +425,7 @@ function AutomationItem({
 
 export default function DashboardPage() {
   const { isAuthenticated } = useConvexAuth();
+  const preferredCurrency = useUserCurrency();
   const { startDate, endDate } = useMemo(() => getCurrentMonthRange(), []);
 
   // ── Convex queries ─────────────────────────────────────────────
@@ -449,7 +451,7 @@ export default function DashboardPage() {
   const currency: CurrencyCode =
     (spendingSummary?.currency as CurrencyCode) ??
     (netWorth?.primaryCurrency as CurrencyCode) ??
-    "NGN";
+    preferredCurrency;
 
   const totalBalance = netWorth?.totalNetWorth ?? 0;
   const totalIncome = spendingSummary?.totalIncome ?? 0;

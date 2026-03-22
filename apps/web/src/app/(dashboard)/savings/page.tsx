@@ -14,6 +14,7 @@ import { WmEmptyState } from "@/components/wm/wm-empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MOCK_SAVINGS_GOALS } from "@/lib/mock-data";
 import type { SavingsGoal } from "@/lib/mock-data";
+import { useUserCurrency } from "@/hooks/use-currency";
 
 // ── Adapt Convex savings goal data to component shape ───────────────
 function adaptGoals(convexGoals: any[]): SavingsGoal[] {
@@ -54,6 +55,7 @@ function SavingsPageSkeleton() {
 
 export default function SavingsPage() {
   const { isAuthenticated } = useConvexAuth();
+  const preferredCurrency = useUserCurrency();
 
   // Fetch real data from Convex
   const convexGoals = useQuery(api.savingsGoals.getGoals, isAuthenticated ? {} : "skip");
@@ -84,13 +86,13 @@ export default function SavingsPage() {
   const isUsingRealData = !isLoading && convexGoals !== null && convexGoals !== undefined && convexGoals.length > 0;
   const isEmpty = !isLoading && isUsingRealData && goals.length === 0;
 
-  // Determine currency from first goal or default
+  // Determine currency from first goal or user preference
   const currency = React.useMemo(() => {
     if (goals.length > 0) {
       return goals[0]!.currency;
     }
-    return "NGN";
-  }, [goals]);
+    return preferredCurrency;
+  }, [goals, preferredCurrency]);
 
   // Handle creating a new savings goal via Convex mutation
   const handleAddGoal = React.useCallback(

@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/currencies";
 import { MOCK_TRANSACTIONS } from "@/lib/mock-data";
 import type { Transaction } from "@/lib/mock-data";
 import type { CurrencyCode } from "@/lib/constants";
+import { useUserCurrency } from "@/hooks/use-currency";
 
 // ── Styles (faithful port of react-app-8.js) ──────────────────────
 
@@ -414,6 +415,7 @@ function adaptToDisplayTransactions(
 
 export default function TransactionsPage() {
   const { isAuthenticated } = useConvexAuth();
+  const preferredCurrency = useUserCurrency();
 
   // Fetch real data from Convex
   const convexResult = useQuery(
@@ -459,8 +461,8 @@ export default function TransactionsPage() {
     if (convexResult?.transactions?.[0]?.currency) {
       return convexResult.transactions[0].currency as CurrencyCode;
     }
-    return "NGN";
-  }, [convexResult]);
+    return preferredCurrency;
+  }, [convexResult, preferredCurrency]);
 
   const displayTransactions = useMemo(
     () => adaptToDisplayTransactions(rawTransactions, currency),

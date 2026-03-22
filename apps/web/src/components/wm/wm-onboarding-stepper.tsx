@@ -1142,6 +1142,9 @@ export function WmOnboardingStepper() {
           country: selectedCountry.code,
           currency: selectedCountry.currency,
         });
+        // Also seed localStorage so the currency selector and all hooks pick it up
+        localStorage.setItem("wm-preferred-currency", selectedCountry.currency);
+        window.dispatchEvent(new Event("wm-currency-changed"));
       } catch {
         // non-critical
       }

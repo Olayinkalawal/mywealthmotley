@@ -5,6 +5,7 @@ import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../../convex/_generated/api";
 import { formatCurrency } from "@/lib/currencies";
+import { useUserCurrency } from "@/hooks/use-currency";
 import {
   ASSET_TYPE_COLORS,
   ASSET_TYPE_LABELS,
@@ -744,6 +745,7 @@ function AllocationCardDisplay({
 export default function AllMyMoneyPage() {
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
+  const preferredCurrency = useUserCurrency();
 
   // Modal states
   const [showScreenshotImport, setShowScreenshotImport] = useState(false);
@@ -768,7 +770,7 @@ export default function AllMyMoneyPage() {
 
   // Derived data
   const primaryCurrency: CurrencyCode =
-    (netWorth?.primaryCurrency as CurrencyCode) ?? "NGN";
+    (netWorth?.primaryCurrency as CurrencyCode) ?? preferredCurrency;
 
   const breakdownData: AssetBreakdown[] =
     assetBreakdown?.breakdown.map((b) => ({

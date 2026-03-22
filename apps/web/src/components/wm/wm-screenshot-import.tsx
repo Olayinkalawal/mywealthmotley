@@ -222,7 +222,7 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
       // Show preview of last image
       const reader = new FileReader();
       reader.onload = (e) => setPreviewUrl(e.target?.result as string);
-      reader.readAsDataURL(validFiles[validFiles.length - 1]);
+      reader.readAsDataURL(validFiles[validFiles.length - 1]!);
 
       const allHoldings: Array<{
         id: string;
@@ -237,7 +237,7 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
       let failedCount = 0;
 
       for (let i = 0; i < validFiles.length; i++) {
-        const file = validFiles[i];
+        const file = validFiles[i]!;
         try {
           toast.info(`Processing screenshot ${i + 1} of ${validFiles.length}...`);
 
@@ -310,7 +310,7 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
       const files = e.target.files;
       if (files && files.length > 0) {
         if (files.length === 1) {
-          processFile(files[0]);
+          processFile(files[0]!);
         } else {
           processMultipleFiles(files);
         }

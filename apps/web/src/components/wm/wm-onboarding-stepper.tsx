@@ -1853,7 +1853,7 @@ function Step25Investments({
                     const files = e.target.files;
                     if (!files) return;
                     for (let i = 0; i < files.length; i++) {
-                      await handleScreenshotUpload(files[i]);
+                      await handleScreenshotUpload(files[i]!);
                     }
                   }}
                   disabled={screenshotState === "uploading" || screenshotState === "processing"}

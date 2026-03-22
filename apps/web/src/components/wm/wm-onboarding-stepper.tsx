@@ -1847,11 +1847,14 @@ function Step25Investments({
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
+                  multiple
                   style={{ position: "absolute" as const, opacity: 0, width: 0, height: 0 }}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleScreenshotUpload(f);
+                  onChange={async (e) => {
+                    const files = e.target.files;
+                    if (!files) return;
+                    for (let i = 0; i < files.length; i++) {
+                      await handleScreenshotUpload(files[i]);
+                    }
                   }}
                   disabled={screenshotState === "uploading" || screenshotState === "processing"}
                 />

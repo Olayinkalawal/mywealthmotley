@@ -158,17 +158,19 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
         }
 
         setDetectedPlatform(result.platform);
-        setHoldings(
-          result.holdings.map((h: any, idx: number) => ({
-            id: `ext-${idx}`,
+        // APPEND to existing holdings (supports multiple screenshots)
+        setHoldings((prev) => [
+          ...prev,
+          ...result.holdings.map((h: any, idx: number) => ({
+            id: `ext-${Date.now()}-${idx}`,
             name: h.name,
             ticker: h.ticker || "",
             quantity: h.quantity,
             value: h.value,
             currency: h.currency,
             isEditing: false,
-          }))
-        );
+          })),
+        ]);
         setState("review");
       } catch (error: any) {
         console.error("Screenshot import error:", error);
@@ -205,10 +207,14 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
   }, []);
 
   const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) processFile(file);
-      // Reset input so the same file can be re-selected
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      // Process all selected files sequentially — each gets AI analysis
+      for (let i = 0; i < files.length; i++) {
+        await processFile(files[i]);
+      }
+      // Reset input so the same files can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
     [processFile]
@@ -380,7 +386,7 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
+                multiple
                 className="hidden"
                 onChange={handleFileChange}
               />

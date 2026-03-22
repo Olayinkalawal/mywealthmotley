@@ -995,7 +995,7 @@ interface NewsItem {
   category: NewsCategory;
   region: string;
   source: string;
-  publishedAt: number;
+  hoursAgo: number;
 }
 
 const MOCK_NEWS: NewsItem[] = [
@@ -1006,7 +1006,7 @@ const MOCK_NEWS: NewsItem[] = [
     category: "bonds",
     region: "NG",
     source: "DMO",
-    publishedAt: Date.now(),
+    hoursAgo: 0,
   },
   {
     title: "Bank of England Holds Interest Rate at 4.5%",
@@ -1015,7 +1015,7 @@ const MOCK_NEWS: NewsItem[] = [
     category: "policy",
     region: "GB",
     source: "Bank of England",
-    publishedAt: Date.now() - 1 * 60 * 60 * 1000,
+    hoursAgo: 1,
   },
   {
     title: "S&P 500 Up 12% Year-to-Date",
@@ -1024,7 +1024,7 @@ const MOCK_NEWS: NewsItem[] = [
     category: "markets",
     region: "global",
     source: "Market Data",
-    publishedAt: Date.now() - 2 * 60 * 60 * 1000,
+    hoursAgo: 2,
   },
   {
     title: "CBN Lifts Restrictions on Crypto Trading",
@@ -1033,7 +1033,7 @@ const MOCK_NEWS: NewsItem[] = [
     category: "crypto",
     region: "NG",
     source: "CBN",
-    publishedAt: Date.now() - 3 * 60 * 60 * 1000,
+    hoursAgo: 3,
   },
   {
     title: "UK ISA Allowance Remains \u00A320,000",
@@ -1042,7 +1042,7 @@ const MOCK_NEWS: NewsItem[] = [
     category: "savings",
     region: "GB",
     source: "HMRC",
-    publishedAt: Date.now() - 4 * 60 * 60 * 1000,
+    hoursAgo: 4,
   },
 ];
 
@@ -1059,6 +1059,8 @@ function formatTimeAgo(timestamp: number): string {
 
 function FinancialNewsSection({ userCountry }: { userCountry?: string }) {
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // Filter news by user's country (show their region + global), or show all
   const filteredNews = useMemo(() => {
@@ -1254,7 +1256,7 @@ function FinancialNewsSection({ userCountry }: { userCountry?: string }) {
                       color: "#968a84",
                     }}
                   >
-                    {item.source} &middot; {formatTimeAgo(item.publishedAt)}
+                    {item.source} &middot; {item.hoursAgo === 0 ? "Just now" : `${item.hoursAgo}h ago`}
                   </div>
                 </div>
               );

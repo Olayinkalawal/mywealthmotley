@@ -37,7 +37,7 @@ function WmDailyTip() {
                     {DAILY_TIP.title}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Sholz says...
+                    Mo says...
                   </p>
                 </div>
                 <Button

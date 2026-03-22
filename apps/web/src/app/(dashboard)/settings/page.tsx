@@ -203,7 +203,7 @@ function PreferencesTab() {
       <div className="h-px w-full bg-white/5" />
 
       <div>
-        <h3 className="wm-heading text-lg text-white mb-4">Sholz Personality</h3>
+        <h3 className="wm-heading text-lg text-white mb-4">Mo Personality</h3>
         <div className="flex p-1 bg-black/40 border border-white/10 rounded-full w-fit mb-6 shadow-inner">
           <button
             onClick={() => setSholzMode("warm")}
@@ -229,8 +229,8 @@ function PreferencesTab() {
           </div>
           <p className="text-sm text-white/90 leading-relaxed pl-4 pt-1">
             {sholzMode === "warm"
-              ? "\"Yo! I'm Sholz, your money conscience with better jokes. Ask me anything about your finances, or let me roast your spending habits.\""
-              : "\"Good day. I am Sholz, your personal financial advisor. I am here to provide structured, data-driven insights to help you achieve your financial objectives.\""}
+              ? "\"Yo! I'm Mo, your money conscience with better jokes. Ask me anything about your finances, or let me roast your spending habits.\""
+              : "\"Good day. I am Mo, your personal financial advisor. I am here to provide structured, data-driven insights to help you achieve your financial objectives.\""}
           </p>
         </div>
       </div>
@@ -265,7 +265,7 @@ function NotificationsTab() {
     { key: "goals", label: "Goal milestones" },
     { key: "blackTax", label: "Black Tax reminders" },
     { key: "japaScore", label: "Japa Score updates" },
-    { key: "sholzTips", label: "Sholz tips & insights" },
+    { key: "sholzTips", label: "Mo tips & insights" },
   ];
 
   return (
@@ -327,7 +327,7 @@ function NotificationsTab() {
             <input type="time" value={quietTo} onChange={(e) => setQuietTo(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-[#ffb347]/50 focus:outline-none focus:bg-white/10 transition-all wm-mono text-sm" style={{ colorScheme: "dark" }} />
           </div>
         </div>
-        <p className="wm-mono text-[10px] text-[#968a84] mt-2 pl-1">Sholz will not disturb you during these hours unless it&apos;s a security alert.</p>
+        <p className="wm-mono text-[10px] text-[#968a84] mt-2 pl-1">Mo will not disturb you during these hours unless it&apos;s a security alert.</p>
       </div>
     </div>
   );
@@ -416,9 +416,9 @@ function PrivacyTab() {
         </h3>
         <div className="bg-black/20 border border-white/5 rounded-2xl p-2 flex flex-col">
           {[
-            { key: "shareAnonymized", label: "Share anonymized data for app improvements", sub: "Help us make Sholz smarter." },
+            { key: "shareAnonymized", label: "Share anonymized data for app improvements", sub: "Help us make Mo smarter." },
             { key: "thirdPartyAnalytics", label: "Allow third-party analytics", sub: "Used for crash reporting and tracking." },
-            { key: "personalizedAI", label: "Personalized AI responses", sub: "Sholz will remember past context to give better advice." },
+            { key: "personalizedAI", label: "Personalized AI responses", sub: "Mo will remember past context to give better advice." },
           ].map((item, i, arr) => (
             <React.Fragment key={item.key}>
               <label className="flex items-center justify-between p-4 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group" onClick={() => togglePrivacy(item.key)}>
@@ -490,7 +490,7 @@ function BillingTab() {
         </div>
         <div className="h-px w-full my-6" style={{ background: "rgba(255,179,71,0.1)" }} />
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8">
-          {["Unlimited AI Sholz chats", "Advanced Japa Score tracking", "Black Tax analytics", "Custom financial reports"].map((item) => (
+          {["Unlimited Mo chats", "Advanced Japa Score tracking", "Black Tax analytics", "Custom financial reports"].map((item) => (
             <li key={item} className="flex items-center gap-2 text-sm text-white/80">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffb347" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
               {item}

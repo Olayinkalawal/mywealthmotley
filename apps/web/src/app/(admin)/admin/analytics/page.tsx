@@ -75,7 +75,7 @@ const FEATURE_ADOPTION = [
   { feature: "All My Money", pct: 82 },
   { feature: "Budget", pct: 65 },
   { feature: "Money DNA", pct: 52 },
-  { feature: "AI Sholz", pct: 45 },
+  { feature: "Mo", pct: 45 },
   { feature: "Japa Score", pct: 38 },
   { feature: "Learn", pct: 30 },
 ];

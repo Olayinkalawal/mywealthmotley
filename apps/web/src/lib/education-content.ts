@@ -172,5 +172,5 @@ export const DAILY_TIP = {
   title: "Today's Money Tip",
   content:
     "The 24-hour rule: Before any purchase over \u20A610,000, wait 24 hours. If you still want it tomorrow, buy it. You'll be surprised how many 'must-haves' become 'meh' overnight.",
-  author: "Sholz",
+  author: "Mo",
 };

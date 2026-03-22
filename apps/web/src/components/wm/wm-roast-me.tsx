@@ -59,7 +59,7 @@ function ThinkingAnimation() {
       </motion.div>
       <div className="flex items-center gap-1">
         <span className="text-sm font-medium text-muted-foreground">
-          Sholz is analyzing your spending
+          Mo is analyzing your spending
         </span>
         <motion.span
           animate={{ opacity: [0, 1, 0] }}
@@ -143,7 +143,7 @@ function WmRoastMe() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Sholz Roast: ${currentRoast.headline}`,
+          title: `Mo Roast: ${currentRoast.headline}`,
           text: shareText,
         });
       } catch {
@@ -168,7 +168,7 @@ function WmRoastMe() {
               Ready to get roasted?
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Let AI Sholz roast your spending habits. It&apos;s brutal, it&apos;s
+              Let Mo roast your spending habits. It&apos;s brutal, it&apos;s
               honest, and it&apos;s hilarious.
             </p>
           </div>
@@ -178,7 +178,7 @@ function WmRoastMe() {
             size="lg"
           >
             <Fire className="size-4" />
-            Roast Me, Sholz!
+            Roast Me, Mo!
           </Button>
         </CardContent>
       </Card>
@@ -189,7 +189,7 @@ function WmRoastMe() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-heading">
               <Fire className="size-5 text-[#E8614D]" weight="duotone" />
-              Sholz&apos;s Roast
+              Mo&apos;s Roast
             </DialogTitle>
             <DialogDescription>
               Your personalized spending roast, served hot.
@@ -239,7 +239,7 @@ function WmRoastMe() {
 
                 {/* Disclaimer */}
                 <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-                  This is meant to be fun and educational. AI Sholz loves you
+                  This is meant to be fun and educational. Mo loves you
                   really.
                 </p>
               </motion.div>

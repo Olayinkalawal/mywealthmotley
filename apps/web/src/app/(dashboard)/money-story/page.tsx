@@ -1070,7 +1070,7 @@ function Slide6() {
               marginBottom: "4px",
             }}
           >
-            Sholz says:
+            Mo says:
           </p>
           <p
             style={{
@@ -1408,7 +1408,7 @@ function Slide8() {
               fontStyle: "italic",
             }}
           >
-            &ldquo;Working hard, spending harder.&rdquo; - Sholz
+            &ldquo;Working hard, spending harder.&rdquo; - Mo
           </p>
         </div>
       </div>

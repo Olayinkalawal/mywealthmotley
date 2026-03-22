@@ -99,14 +99,14 @@ const MOCK_CONTENT: ContentItem[] = [
   },
   {
     id: "3",
-    title: "New Feature: AI Sholz is here!",
+    title: "New Feature: Mo is here!",
     type: "announcement",
     status: "draft",
     author: "Product Team",
     date: "2026-03-15",
     excerpt:
-      "Introducing AI Sholz, your personal AI financial assistant powered by cutting-edge LLMs.",
-    body: "We are thrilled to announce AI Sholz -- your new AI-powered financial companion. Ask questions about budgeting, saving, investing, and more. AI Sholz understands the Nigerian financial context and can help with everything from planning your salary to understanding pension contributions. Currently in beta for Premium users.",
+      "Introducing Mo, your personal AI financial assistant powered by cutting-edge LLMs.",
+    body: "We are thrilled to announce Mo -- your new AI-powered financial companion. Ask questions about budgeting, saving, investing, and more. Mo understands the Nigerian financial context and can help with everything from planning your salary to understanding pension contributions. Currently in beta for Premium users.",
   },
   {
     id: "4",

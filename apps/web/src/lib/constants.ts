@@ -55,6 +55,7 @@ export const ROUTES = {
   portfolioImport: "/portfolio/import",
   learn: "/learn",
   moneyStory: "/money-story",
+  futureYou: "/future-you",
   sholz: "/sholz",
   settings: "/settings",
   admin: "/admin",

@@ -334,7 +334,7 @@ function ChatSidebar({
           Roast Settings
         </h3>
         <p className="text-xs text-white/70 mb-3 leading-relaxed">
-          Adjust how savage Sholz should be when analyzing your poor life
+          Adjust how savage Mo should be when analyzing your poor life
           choices.
         </p>
         <div className="flex gap-2">
@@ -628,7 +628,7 @@ export default function SholzPage() {
             </div>
             <div>
               <h1 className="wm-heading text-xl md:text-2xl text-white leading-none">
-                AI Sholz
+                Mo
               </h1>
               <p className="text-sm font-medium mt-1 text-[#ffb347]">
                 Your Financial Bestie
@@ -726,7 +726,7 @@ export default function SholzPage() {
                   </svg>
                 </div>
                 <h3 className="wm-heading text-lg text-white">
-                  Hey, I&apos;m AI Sholz!
+                  Hey, I&apos;m Mo!
                 </h3>
                 <p className="mt-1 text-sm text-[#968a84] max-w-sm mx-auto">
                   Your money conscience with better jokes. Ask me anything about
@@ -774,7 +774,7 @@ export default function SholzPage() {
                       <SholzAvatar spicy={msg.spicy} />
                       <div className="flex flex-col gap-1">
                         <span className="wm-mono text-xs ml-1" style={{ color: msg.spicy ? "#ef4444" : "#968a84" }}>
-                          {msg.spicy ? "Sholz (Spicy Mode)" : "Sholz"}
+                          {msg.spicy ? "Mo (Spicy Mode)" : "Mo"}
                         </span>
                         <div
                           className={cn(
@@ -949,7 +949,7 @@ export default function SholzPage() {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="wm-scrollbar"
-                placeholder="Ask Sholz anything about your money..."
+                placeholder="Ask Mo anything about your money..."
                 style={{
                   width: "100%",
                   background: "transparent",

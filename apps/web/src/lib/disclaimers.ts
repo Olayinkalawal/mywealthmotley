@@ -22,9 +22,9 @@ export const PORTFOLIO_DISCLAIMER =
   "market prices and should not be used to make actual investment decisions.";
 
 export const AI_SHOLZ_DISCLAIMER =
-  "Sholz is an AI-powered educational companion. The information provided " +
-  "by Sholz is for educational purposes only and should not be interpreted " +
-  "as personalised financial advice. Sholz may occasionally produce " +
+  "Mo is an AI-powered educational companion. The information provided " +
+  "by Mo is for educational purposes only and should not be interpreted " +
+  "as personalised financial advice. Mo may occasionally produce " +
   "inaccurate information. Always verify important financial information " +
   "with a qualified professional.";
 

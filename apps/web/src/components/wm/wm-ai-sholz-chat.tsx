@@ -50,7 +50,7 @@ function TypingIndicator() {
     <div className="flex items-end gap-2.5 max-w-[85%]">
       <Avatar size="sm" className="shrink-0">
         <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
-          AS
+          Mo
         </AvatarFallback>
       </Avatar>
       <div className="rounded-2xl rounded-bl-sm bg-primary/10 px-4 py-3 dark:bg-secondary/10">
@@ -285,12 +285,12 @@ export function WmAiSholzChat({ className }: WmAiSholzChatProps) {
         <div className="flex items-center gap-3">
           <Avatar size="default">
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-              AS
+              Mo
             </AvatarFallback>
           </Avatar>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-heading text-sm font-semibold">AI Sholz</h3>
+              <h3 className="font-heading text-sm font-semibold">Mo</h3>
               <span className="inline-block size-2 rounded-full bg-success" />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -350,7 +350,7 @@ export function WmAiSholzChat({ className }: WmAiSholzChatProps) {
                 <Robot className="size-8 text-primary dark:text-secondary" />
               </div>
               <h3 className="font-heading text-lg font-semibold">
-                Hey, I&apos;m AI Sholz!
+                Hey, I&apos;m Mo!
               </h3>
               <p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">
                 Your personal financial education companion. Ask me anything
@@ -404,7 +404,7 @@ export function WmAiSholzChat({ className }: WmAiSholzChatProps) {
                       {message.isError ? (
                         <WarningCircle className="size-3" />
                       ) : (
-                        "AS"
+                        "Mo"
                       )}
                     </AvatarFallback>
                   </Avatar>
@@ -443,7 +443,7 @@ export function WmAiSholzChat({ className }: WmAiSholzChatProps) {
       <div className="flex items-start gap-1.5 px-4 py-1.5 border-t border-dashed">
         <Info className="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
         <p className="text-[10px] leading-snug text-muted-foreground/60">
-          AI Sholz provides financial education only. Not financial advice.
+          Mo provides financial education only. Not financial advice.
         </p>
       </div>
 
@@ -459,7 +459,7 @@ export function WmAiSholzChat({ className }: WmAiSholzChatProps) {
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Ask AI Sholz anything about your money..."
+              placeholder="Ask Mo anything about your money..."
               rows={1}
               className={cn(
                 "w-full resize-none rounded-xl border bg-muted/30 px-4 py-2.5 pr-12 text-sm",

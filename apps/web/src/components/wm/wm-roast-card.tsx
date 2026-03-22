@@ -54,7 +54,7 @@ function WmRoastCard({ roast, className }: WmRoastCardProps) {
               <Fire size={16} weight="duotone" className="text-[#E8614D]" />
             </div>
             <span className="font-heading text-xs font-bold tracking-wider text-[#D4A843] uppercase">
-              Sholz Roast
+              Mo Roast
             </span>
           </div>
 
@@ -70,7 +70,7 @@ function WmRoastCard({ roast, className }: WmRoastCardProps) {
             {/* Tip section */}
             <div className="mt-6 rounded-lg border border-[#D4A843]/30 bg-[#D4A843]/10 p-3">
               <p className="text-[10px] font-semibold tracking-wider text-[#D4A843] uppercase">
-                Sholz&apos;s Tip
+                Mo&apos;s Tip
               </p>
               <p className="mt-1 text-xs leading-relaxed text-gray-300">
                 {roast.tip}

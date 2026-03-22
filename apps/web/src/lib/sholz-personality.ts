@@ -4,7 +4,7 @@
  * Extracted from 4 real 1-on-1 coaching sessions with Sholz (Solafunmi Sosanya).
  * Every pattern, phrase, and behavior here is REAL — directly observed from transcripts.
  *
- * This file is the soul of AI Sholz.
+ * This file is the soul of Mo.
  */
 
 // ═══════════════════════════════════════════════════════════════════════

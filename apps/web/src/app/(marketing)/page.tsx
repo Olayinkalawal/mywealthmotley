@@ -826,7 +826,7 @@ function HeroSection() {
                 <h3 style={customStyles.ruleInfoH3}>AI Financial Coach</h3>
                 <p style={customStyles.ruleInfoP}>
                   Personalized advice that understands African money culture.
-                  Sholz has your back.
+                  Mo has your back.
                 </p>
               </div>
               <div style={{ color: "#ffb347", flexShrink: 0, marginLeft: "12px" }}>
@@ -855,7 +855,7 @@ function HeroSection() {
                 lineHeight: 1.5,
               }}
             >
-              <span style={{ color: "#ffb347" }}>Sholz:</span> &ldquo;Your
+              <span style={{ color: "#ffb347" }}>Mo:</span> &ldquo;Your
               savings rate jumped to 23.7% this month. At this pace, your Japa
               fund hits target by August.&rdquo;
             </div>
@@ -1050,7 +1050,7 @@ const features: {
     icon: Robot,
     title: "AI Financial Coach",
     description:
-      "Sholz's warmth meets your real spending data. Get personalized advice that understands susu, esusu, ajo, and why you sent money home three times this month.",
+      "Mo's warmth meets your real spending data. Get personalized advice that understands susu, esusu, ajo, and why you sent money home three times this month.",
     featured: false,
   },
 ];

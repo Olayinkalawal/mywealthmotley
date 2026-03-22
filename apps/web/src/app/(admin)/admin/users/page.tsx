@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
           </div>
 
           <div className="p-6 flex-1">
-            <h3 className="wm-heading text-sm text-white mb-4">Recent Sholz Chats</h3>
+            <h3 className="wm-heading text-sm text-white mb-4">Recent Mo Chats</h3>
             <div className="space-y-3">
               {[
                 { q: '"Should I buy that new iPhone 15 Pro?"', tag: "Roast Mode Active", time: "10:45 AM" },

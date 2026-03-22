@@ -23,6 +23,7 @@ import {
   ChartBar,
   FileText,
   CurrencyDollar,
+  Path,
 } from "@phosphor-icons/react";
 import {
   Sidebar,
@@ -363,11 +364,17 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
             label="Money Story"
           />
           <NavItem
+            href={ROUTES.futureYou}
+            active={isActive(ROUTES.futureYou)}
+            icon={Path}
+            label="Future You"
+          />
+          <NavItem
             href={ROUTES.sholz}
             active={isActive(ROUTES.sholz)}
             icon={Robot}
-            label="AI Sholz"
-            badge={<NavBadge color="green">Online</NavBadge>}
+            label="Mo"
+            badge={<NavBadge color="green">AI</NavBadge>}
           />
         </div>
 

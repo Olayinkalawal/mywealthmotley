@@ -107,7 +107,7 @@ export function WmSettingsPreferences() {
       // localStorage not available
     }
     toast.success(
-      `Sholz tone set to ${newTone === "warm" ? "Warm & Friendly" : "Professional & Formal"}`
+      `Mo tone set to ${newTone === "warm" ? "Warm & Friendly" : "Professional & Formal"}`
     );
   };
 
@@ -182,12 +182,12 @@ export function WmSettingsPreferences() {
           </p>
         </div>
 
-        {/* AI Sholz tone */}
+        {/* Mo tone */}
         <div className="space-y-3">
           <div>
-            <Label>AI Sholz Tone</Label>
+            <Label>Mo Tone</Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Choose how Sholz communicates with you
+              Choose how Mo communicates with you
             </p>
           </div>
           <div className="flex gap-2">

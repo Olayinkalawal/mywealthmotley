@@ -459,7 +459,7 @@ export default function LearnPage() {
                   color: "#ffb347",
                 }}
               >
-                Today&apos;s Tip from Sholz
+                Today&apos;s Tip from Mo
               </h3>
               <p className="text-sm" style={{ color: "#968a84" }}>
                 No sugarcoating, just facts.
@@ -555,7 +555,7 @@ export default function LearnPage() {
                   color: "#ef4444",
                 }}
               >
-                Sholz&apos;s Honest Take
+                Mo&apos;s Honest Take
               </h3>
             </div>
             <button

@@ -206,18 +206,118 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
     fileInputRef.current?.click();
   }, []);
 
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
-      // Process all selected files sequentially — each gets AI analysis
-      for (let i = 0; i < files.length; i++) {
-        await processFile(files[i]);
+  const processMultipleFiles = useCallback(
+    async (files: FileList) => {
+      const validFiles = Array.from(files).filter(
+        (f) => f.type.startsWith("image/") && f.size <= 10 * 1024 * 1024
+      );
+      if (validFiles.length === 0) {
+        toast.error("No valid image files selected.");
+        return;
       }
-      // Reset input so the same files can be re-selected
+
+      setState("uploading");
+      setErrorMessage("");
+
+      // Show preview of last image
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewUrl(e.target?.result as string);
+      reader.readAsDataURL(validFiles[validFiles.length - 1]);
+
+      const allHoldings: Array<{
+        id: string;
+        name: string;
+        ticker: string;
+        quantity: number | null;
+        value: number;
+        currency: string;
+        isEditing: boolean;
+      }> = [];
+      let lastPlatform = "";
+      let failedCount = 0;
+
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
+        try {
+          toast.info(`Processing screenshot ${i + 1} of ${validFiles.length}...`);
+
+          // 1. Upload
+          const uploadUrl = await generateUploadUrl();
+          const uploadRes = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+          if (!uploadRes.ok) throw new Error("Upload failed");
+          const { storageId } = await uploadRes.json();
+
+          // 2. Create record
+          const recordId = await createImportRecord({ imageStorageId: storageId });
+          setImportId(recordId);
+
+          // 3. AI analysis
+          setState("processing");
+          const result = await analyzeScreenshot({
+            imageStorageId: storageId,
+            importId: recordId,
+          });
+
+          // 4. Collect holdings
+          if (result.holdings.length > 0) {
+            lastPlatform = result.platform || lastPlatform;
+            allHoldings.push(
+              ...result.holdings.map((h: any, idx: number) => ({
+                id: `ext-${Date.now()}-${i}-${idx}`,
+                name: h.name,
+                ticker: h.ticker || "",
+                quantity: h.quantity,
+                value: h.value,
+                currency: h.currency,
+                isEditing: false,
+              }))
+            );
+          } else {
+            failedCount++;
+          }
+        } catch (err) {
+          console.error(`Failed to process file ${i + 1}:`, err);
+          failedCount++;
+        }
+      }
+
+      // Show combined results
+      if (allHoldings.length > 0) {
+        setDetectedPlatform(lastPlatform);
+        setHoldings((prev) => [...prev, ...allHoldings]);
+        setState("review");
+        if (failedCount > 0) {
+          toast.warning(`${failedCount} screenshot(s) had no detectable holdings.`);
+        } else {
+          toast.success(`Found ${allHoldings.length} holdings from ${validFiles.length} screenshot(s)!`);
+        }
+      } else {
+        setState("error");
+        setErrorMessage(
+          "No investment holdings could be detected in any of the uploaded images. Please make sure the screenshots show your portfolio or investment list."
+        );
+      }
+    },
+    [generateUploadUrl, createImportRecord, analyzeScreenshot]
+  );
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        if (files.length === 1) {
+          processFile(files[0]);
+        } else {
+          processMultipleFiles(files);
+        }
+      }
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
-    [processFile]
+    [processFile, processMultipleFiles]
   );
 
   const toggleEdit = useCallback((id: string) => {

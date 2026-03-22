@@ -24,6 +24,7 @@ import {
   FileText,
   CurrencyDollar,
   Path,
+  CaretDoubleLeft,
 } from "@phosphor-icons/react";
 import {
   Sidebar,
@@ -208,6 +209,7 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
   const pathname = usePathname();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { toggleSidebar } = useSidebar();
   const isAdmin = variant === "admin";
   const [adminOpen, setAdminOpen] = React.useState(isAdmin);
 
@@ -248,25 +250,31 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
     >
       {/* ---- Logo ---- */}
       <SidebarHeader className="!p-0 !bg-[#0d0b0a]">
-        <div className="h-20 flex items-center px-6 border-b border-[rgba(255,255,255,0.08)] shrink-0">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-[rgba(255,255,255,0.08)] shrink-0">
           <Link
             href={isAdmin ? ROUTES.admin : ROUTES.dashboard}
-            className="flex items-center gap-2 group"
+            className="flex items-center gap-2 group group-data-[collapsible=icon]:justify-center"
           >
-            <span className="wm-heading text-2xl text-white group-hover:text-[#ffb347] transition-colors tracking-tight">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#ffb347] text-[#0d0b0a]">
+              <span className="wm-heading text-sm font-bold">W</span>
+            </div>
+            <span className="wm-heading text-xl text-white group-hover:text-[#ffb347] transition-colors tracking-tight group-data-[collapsible=icon]:hidden">
               {APP_NAME}
               <span className="text-[#ffb347]">.</span>
             </span>
-            <span
-              className="w-2 h-2 rounded-full bg-[#ffb347] mt-1"
-              style={glowDot}
-            />
           </Link>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="hidden md:flex w-7 h-7 items-center justify-center rounded-lg text-[#968a84] hover:text-[#ffb347] hover:bg-white/5 transition-colors group-data-[collapsible=icon]:hidden"
+          >
+            <CaretDoubleLeft size={14} weight="bold" />
+          </button>
         </div>
       </SidebarHeader>
 
       {/* ---- User Profile Card ---- */}
-      <div className="p-5 border-b border-[rgba(255,255,255,0.08)] shrink-0 bg-[rgba(255,255,255,0.04)]">
+      <div className="p-5 border-b border-[rgba(255,255,255,0.08)] shrink-0 bg-[rgba(255,255,255,0.04)] group-data-[collapsible=icon]:hidden">
         <div className="flex items-center gap-3 rounded-xl cursor-pointer group">
           {/* Avatar */}
           {avatarUrl ? (

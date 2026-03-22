@@ -9,6 +9,8 @@ import {
   Warning,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { useMutation, useQuery, useConvexAuth } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import {
   Card,
   CardContent,
@@ -158,6 +160,13 @@ function ConsentRow({
   );
 }
 
+// Map local preference keys to Convex consentType values
+const CONSENT_TYPE_MAP: Record<keyof ConsentPreferences, string> = {
+  bankDataProcessing: "bank_data",
+  marketingCommunications: "marketing",
+  analyticsImprovement: "analytics",
+};
+
 export function WmSettingsDataPrivacy() {
   const [consent, setConsent] =
     React.useState<ConsentPreferences>(DEFAULT_CONSENT);
@@ -171,12 +180,58 @@ export function WmSettingsDataPrivacy() {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
 
+  // Convex backend integration
+  const { isAuthenticated } = useConvexAuth();
+  const updateConsentMutation = useMutation(api.users.updateConsent);
+  const consentRecords = useQuery(
+    api.users.getConsentRecords,
+    isAuthenticated ? {} : "skip"
+  );
+
   React.useEffect(() => {
     const stored = getStoredConsent();
     setConsent(stored.prefs);
     setDates(stored.dates);
     setMounted(true);
   }, []);
+
+  // Sync from backend consent records (backend takes priority over localStorage)
+  React.useEffect(() => {
+    if (!consentRecords || consentRecords.length === 0) return;
+
+    const reverseMap: Record<string, keyof ConsentPreferences> = {
+      bank_data: "bankDataProcessing",
+      marketing: "marketingCommunications",
+      analytics: "analyticsImprovement",
+    };
+
+    const updatedPrefs = { ...consent };
+    const updatedDates = { ...dates };
+
+    for (const record of consentRecords) {
+      const localKey = reverseMap[record.consentType];
+      if (localKey) {
+        updatedPrefs[localKey] = record.granted;
+        updatedDates[localKey] = record.granted
+          ? new Date(record.timestamp).toISOString()
+          : updatedDates[localKey];
+      }
+    }
+
+    setConsent(updatedPrefs);
+    setDates(updatedDates);
+
+    // Also update localStorage to stay in sync
+    try {
+      localStorage.setItem(
+        CONSENT_STORAGE_KEY,
+        JSON.stringify({ prefs: updatedPrefs, dates: updatedDates })
+      );
+    } catch {
+      // localStorage not available
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consentRecords]);
 
   const updateConsent = (
     key: keyof ConsentPreferences,
@@ -197,6 +252,15 @@ export function WmSettingsDataPrivacy() {
     } catch {
       // localStorage not available
     }
+
+    // Persist to Convex backend
+    if (isAuthenticated) {
+      const consentType = CONSENT_TYPE_MAP[key];
+      updateConsentMutation({ consentType, granted: value }).catch(() => {
+        // Silently handle — localStorage is the fallback
+      });
+    }
+
     toast.success(value ? "Consent granted" : "Consent withdrawn");
   };
 

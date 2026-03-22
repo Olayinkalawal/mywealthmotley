@@ -177,11 +177,21 @@ function WmEtfComparison({ isLoading = false, className }: WmEtfComparisonProps)
           ETF Comparison Tool
         </CardTitle>
         <CardDescription>
-          Compare ETF facts and historical returns side by side. For educational purposes only.
+          View publicly available ETF facts and historical data side by side. For educational purposes only. This is not a financial promotion.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Educational disclaimer banner */}
+        <div className="rounded-lg border border-amber-300/70 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
+          <p className="font-semibold">Educational Information Only</p>
+          <p className="mt-1">
+            This comparison tool shows publicly available market data for educational purposes only.
+            No fund is ranked, rated, or presented as superior to another. Past performance is not a
+            reliable indicator of future results. This is not a financial promotion.
+          </p>
+        </div>
+
         {/* ETF Selectors */}
         <div className="flex flex-wrap gap-3">
           {selectedTickers.map((ticker, index) => (
@@ -260,7 +270,7 @@ function WmEtfComparison({ isLoading = false, className }: WmEtfComparisonProps)
                 {(["1y", "3y", "5y", "10y"] as const).map((period) => (
                   <TableRow key={period}>
                     <TableCell className="font-medium">
-                      {period.toUpperCase()} Return
+                      {period.toUpperCase()} Return*
                     </TableCell>
                     {selectedEtfs.map((etf) => {
                       const val = etf.returns[period];
@@ -284,6 +294,15 @@ function WmEtfComparison({ isLoading = false, className }: WmEtfComparisonProps)
                     })}
                   </TableRow>
                 ))}
+                {/* Past performance notice */}
+                <TableRow>
+                  <TableCell
+                    colSpan={selectedEtfs.length + 1}
+                    className="text-[10px] italic text-muted-foreground"
+                  >
+                    *Past performance does not guarantee future results. Historical returns are shown for informational purposes only.
+                  </TableCell>
+                </TableRow>
                 {/* Dividend Yield */}
                 <TableRow>
                   <TableCell className="font-medium">Dividend Yield</TableCell>
@@ -326,7 +345,10 @@ function WmEtfComparison({ isLoading = false, className }: WmEtfComparisonProps)
 
         {/* Bar Chart */}
         <div>
-          <h3 className="mb-3 text-sm font-medium">Returns Comparison</h3>
+          <h3 className="mb-1 text-sm font-medium">Historical Returns Overview</h3>
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            Past performance does not guarantee future results. No fund is presented as superior to another.
+          </p>
           <motion.div
             key={`chart-${selectedTickers.join("-")}`}
             initial={{ opacity: 0.6 }}

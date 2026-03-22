@@ -516,6 +516,15 @@ function ShareSlide() {
           </p>
         </div>
 
+        {/* Privacy warning */}
+        <p
+          className="max-w-[280px] text-center text-xs"
+          style={{ color: "#968a84" }}
+        >
+          This card contains your personal financial information. Only share if
+          you&apos;re comfortable with others seeing these details.
+        </p>
+
         <div className="flex gap-3">
           <Button
             size="sm"

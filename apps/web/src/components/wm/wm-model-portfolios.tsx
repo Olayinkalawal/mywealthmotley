@@ -47,9 +47,9 @@ const MODEL_PORTFOLIOS: ModelPortfolio[] = [
     icon: <ShieldCheck className="size-5" />,
     riskLabel: "Low Risk",
     allocations: [
-      { name: "Bonds", percentage: 70, color: PORTFOLIO_COLORS.bonds },
-      { name: "Money Market", percentage: 20, color: PORTFOLIO_COLORS.moneyMarket },
-      { name: "Blue Chips", percentage: 10, color: PORTFOLIO_COLORS.blueChips },
+      { name: "Fixed income / bonds", percentage: 70, color: PORTFOLIO_COLORS.bonds },
+      { name: "Money market instruments", percentage: 20, color: PORTFOLIO_COLORS.moneyMarket },
+      { name: "Large-cap equities", percentage: 10, color: PORTFOLIO_COLORS.blueChips },
     ],
   },
   {
@@ -59,10 +59,10 @@ const MODEL_PORTFOLIOS: ModelPortfolio[] = [
     icon: <Scales className="size-5" />,
     riskLabel: "Medium Risk",
     allocations: [
-      { name: "Bonds", percentage: 40, color: PORTFOLIO_COLORS.bonds },
-      { name: "US ETFs (VOO/VTI)", percentage: 30, color: PORTFOLIO_COLORS.usEtfs },
-      { name: "Emerging Markets", percentage: 20, color: PORTFOLIO_COLORS.emerging },
-      { name: "Crypto", percentage: 10, color: PORTFOLIO_COLORS.crypto },
+      { name: "Fixed income / bonds", percentage: 40, color: PORTFOLIO_COLORS.bonds },
+      { name: "US large-cap equities", percentage: 30, color: PORTFOLIO_COLORS.usEtfs },
+      { name: "Emerging market equities", percentage: 20, color: PORTFOLIO_COLORS.emerging },
+      { name: "Digital assets", percentage: 10, color: PORTFOLIO_COLORS.crypto },
     ],
   },
   {
@@ -72,9 +72,9 @@ const MODEL_PORTFOLIOS: ModelPortfolio[] = [
     icon: <Rocket className="size-5" />,
     riskLabel: "Higher Risk",
     allocations: [
-      { name: "US ETFs", percentage: 60, color: PORTFOLIO_COLORS.usEtfs },
-      { name: "Emerging Markets", percentage: 25, color: PORTFOLIO_COLORS.emerging },
-      { name: "Crypto", percentage: 15, color: PORTFOLIO_COLORS.crypto },
+      { name: "US large-cap equities", percentage: 60, color: PORTFOLIO_COLORS.usEtfs },
+      { name: "Emerging market equities", percentage: 25, color: PORTFOLIO_COLORS.emerging },
+      { name: "Digital assets", percentage: 15, color: PORTFOLIO_COLORS.crypto },
     ],
   },
   {
@@ -84,9 +84,9 @@ const MODEL_PORTFOLIOS: ModelPortfolio[] = [
     icon: <GlobeHemisphereWest className="size-5" />,
     riskLabel: "Medium Risk",
     allocations: [
-      { name: "UK/US ETFs", percentage: 50, color: PORTFOLIO_COLORS.ukUsEtfs },
-      { name: "NGN Fixed Income", percentage: 30, color: PORTFOLIO_COLORS.ngnFixed },
-      { name: "REITs", percentage: 20, color: PORTFOLIO_COLORS.reits },
+      { name: "International developed equities", percentage: 50, color: PORTFOLIO_COLORS.ukUsEtfs },
+      { name: "Nigerian fixed income", percentage: 30, color: PORTFOLIO_COLORS.ngnFixed },
+      { name: "Real estate investment trusts", percentage: 20, color: PORTFOLIO_COLORS.reits },
     ],
   },
 ];
@@ -281,7 +281,7 @@ function WmModelPortfolios({ isLoading = false, className }: WmModelPortfoliosPr
           Educational Model Portfolios
         </h2>
         <p className="text-sm text-muted-foreground">
-          Explore how different allocation strategies work. These are fictional examples for learning.
+          Explore how different allocation strategies work. These are educational examples of how portfolios can be structured, not recommendations.
         </p>
       </div>
 

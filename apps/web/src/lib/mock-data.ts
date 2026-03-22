@@ -485,6 +485,9 @@ export const MOCK_SAVINGS_GOALS: SavingsGoal[] = [
 ];
 
 // ── ETF Comparison Data ─────────────────────────────────────────────
+// This data uses real, publicly available ETF information for the educational
+// comparison tool. It is presented for informational purposes only. No fund is
+// ranked, rated, or recommended. Past performance does not guarantee future results.
 
 export interface ETF {
   ticker: string;

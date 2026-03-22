@@ -2,6 +2,16 @@ import { v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+// ── Helper: get current user from auth identity ─────────────────────
+async function getCurrentUser(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+  return await ctx.db
+    .query("users")
+    .withIndex("by_clerkId", (q: any) => q.eq("clerkId", identity.subject))
+    .unique();
+}
+
 // ── Get current user by Clerk ID ─────────────────────────────────────
 export const getUser = query({
   args: {},
@@ -215,5 +225,60 @@ export const updateUserPreferences = mutation({
     }
 
     await ctx.db.patch(user._id, updates);
+  },
+});
+
+// ── Update consent record (upsert) ──────────────────────────────────
+export const updateConsent = mutation({
+  args: {
+    consentType: v.string(), // "bank_data" | "marketing" | "analytics" | "data_processing"
+    granted: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Please sign in first");
+
+    // Upsert: check if consent record exists for this type
+    const existing = await ctx.db
+      .query("consentRecords")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("consentType"), args.consentType))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        granted: args.granted,
+        timestamp: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("consentRecords", {
+        userId: user._id,
+        consentType: args.consentType,
+        granted: args.granted,
+        timestamp: Date.now(),
+      });
+    }
+
+    // Update user record timestamps
+    const updates: Record<string, any> = {};
+    if (args.consentType === "marketing") {
+      updates.marketingConsentAt = args.granted ? Date.now() : undefined;
+    }
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(user._id, updates);
+    }
+  },
+});
+
+// ── Get consent records for current user ────────────────────────────
+export const getConsentRecords = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+    return await ctx.db
+      .query("consentRecords")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
   },
 });

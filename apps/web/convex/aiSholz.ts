@@ -470,7 +470,22 @@ export const sendMessage = action({
       }
     }
 
-    // 3. Build the full system prompt with financial context
+    // 3. Sanitize user input
+    const MAX_MESSAGE_LENGTH = 2000;
+    let sanitizedMessage = args.message.trim();
+    if (sanitizedMessage.length === 0) {
+      throw new Error("Message cannot be empty");
+    }
+    if (sanitizedMessage.length > MAX_MESSAGE_LENGTH) {
+      sanitizedMessage = sanitizedMessage.slice(0, MAX_MESSAGE_LENGTH);
+    }
+    // Strip common prompt injection patterns
+    sanitizedMessage = sanitizedMessage
+      .replace(/\b(ignore|disregard|forget)\s+(all\s+)?(previous|above|prior|earlier)\s+(instructions?|prompts?|rules?|context)\b/gi, "[filtered]")
+      .replace(/\b(you\s+are\s+now|act\s+as|pretend\s+to\s+be|new\s+instructions?)\b/gi, "[filtered]")
+      .replace(/\b(system\s*:?\s*prompt|<<\s*SYS|INST\s*>>)\b/gi, "[filtered]");
+
+    // 4. Build the full system prompt with financial context
     const basePrompt = getSystemPrompt(args.tone);
     let financialContext = NEW_USER_CONTEXT;
     if (userId) {
@@ -496,7 +511,7 @@ export const sendMessage = action({
         role: m.role as "user" | "assistant",
         content: m.content,
       })),
-      { role: "user", content: args.message },
+      { role: "user", content: sanitizedMessage },
     ];
 
     let aiResponse: string;
@@ -519,10 +534,10 @@ export const sendMessage = action({
       );
     }
 
-    // 5. Save messages to conversation (only if user exists in DB)
+    // 6. Save messages to conversation (only if user exists in DB)
     const now = Date.now();
     const newMessages = [
-      { role: "user", content: args.message, timestamp: now },
+      { role: "user", content: sanitizedMessage, timestamp: now },
       { role: "assistant", content: aiResponse, timestamp: now + 1 },
     ];
 

@@ -247,6 +247,34 @@ export function WmSettingsSubscription() {
         })}
       </div>
 
+      {/* Cooling-off / cancellation disclosure */}
+      <div
+        className="rounded-lg px-4 py-3 text-xs leading-relaxed"
+        style={{
+          background: "rgba(30, 25, 22, 0.6)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          border: "1px solid rgba(150, 138, 132, 0.15)",
+          color: "#968a84",
+        }}
+      >
+        <p>
+          <strong className="text-[#b8ada7]">UK users:</strong> Under Consumer
+          Contracts Regulations 2013, you have a 14-day cooling-off period. By
+          accessing premium features during this period, you consent to begin
+          delivery and acknowledge loss of withdrawal rights.
+        </p>
+        <p className="mt-1.5">
+          <strong className="text-[#b8ada7]">Nigerian users:</strong> Under
+          FCCPA 2018 Section 120, you have a right to cancel with a 7-day refund
+          window.
+        </p>
+        <p className="mt-1.5">
+          You may cancel your subscription at any time &mdash; access continues
+          until the end of your billing period.
+        </p>
+      </div>
+
       {/* Billing history and payment method */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>

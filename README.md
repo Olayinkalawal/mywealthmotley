@@ -1,159 +1,102 @@
-# Turborepo starter
+# myWealthMotley
 
-This Turborepo starter is maintained by the Turborepo core team.
+**The first AI-powered financial education companion built for Africans.**
 
-## Using this example
+myWealthMotley helps Africans at home and in the diaspora (UK, US, Canada, Germany, UAE, Ghana, Kenya, South Africa) see ALL their money in one place, track budgets with culturally relevant categories, and learn to invest — guided by **Mo**, an AI coach trained on real financial coaching sessions.
 
-Run the following command:
+## Design System
 
-```sh
-npx create-turbo@latest
+| Token | Value |
+|-------|-------|
+| **Primary** | Amber `#ffb347` |
+| **Secondary** | Dark Orange `#e67e22` |
+| **Background** | Near-black `#0d0b0a` |
+| **Muted** | `#968a84` |
+| **Theme** | Dark glassmorphism with ambient glow effects |
+| **Heading Font** | DynaPuff (cursive, playful) |
+| **Mono Font** | JetBrains Mono (data, labels, numbers) |
+| **Body Font** | Inter / Plus Jakarta Sans |
+| **Icons** | Phosphor Icons (duotone weight) |
+| **Flags** | react-circle-flags (SVG circle flags) |
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Monorepo** | Turborepo |
+| **Frontend** | Next.js 14 (App Router) |
+| **UI** | shadcn/ui + Tailwind CSS |
+| **Auth** | Clerk (custom sign-in/sign-up pages) |
+| **Database** | Convex (real-time) |
+| **AI** | OpenAI GPT-4o (Mo chatbot + screenshot analysis) |
+| **Banking** | Mono API (Nigerian bank connections) |
+| **Deployment** | Vercel |
+| **Language** | TypeScript (strict) |
+
+## Key Features
+
+- **All My Money** — Unified dashboard across bank accounts, investments, pensions, property, crypto, and cash across multiple countries and currencies
+- **AI Screenshot Import** — Upload screenshots from Trading 212, Cowrywise, Bamboo, etc. and GPT-4o extracts your holdings automatically
+- **Mo (AI Coach)** — AI chatbot personality extracted from real 1-on-1 coaching sessions with warm, firm, culturally aware financial guidance
+- **Budget Tracker** — Monthly budgets with lifestyle-relevant categories and animated progress tracking
+- **Multi-Currency** — 9 supported currencies (NGN, GBP, USD, CAD, EUR, AED, GHS, KES, ZAR) with real-time conversion
+- **Future You** — Compound interest projection tool showing wealth growth over time
+- **Money Story** — Annual financial wrapped/recap with shareable cards
+
+## Project Structure
+
+```
+wealthmotley/
+  apps/
+    web/                    # Next.js 14 app
+      convex/               # Convex backend (schema, mutations, queries, actions)
+      src/
+        app/                # App Router pages
+          (marketing)/      # Landing page, waitlist
+          (auth)/           # Sign-in, sign-up (custom Clerk)
+          (onboarding)/     # 3-step onboarding flow
+          (dashboard)/      # All authenticated pages
+          (admin)/          # Admin portal
+        components/
+          ui/               # shadcn/ui primitives
+          wm/               # myWealthMotley custom components
+        hooks/              # Custom React hooks
+        lib/                # Constants, currencies, AI prompts, personality engine
+  packages/
+    shared/                 # Shared types
+    typescript-config/      # Shared tsconfig
+    eslint-config/          # Shared ESLint
 ```
 
-## What's inside?
+## Getting Started
 
-This Turborepo includes the following packages/apps:
+```bash
+# Install dependencies
+npm install
 
-### Apps and Packages
+# Set up environment variables
+cp apps/web/.env.example apps/web/.env.local
+# Fill in: Clerk, Convex, OpenAI, Mono API keys
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+# Deploy Convex backend
+cd apps/web && npx convex dev
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+# Start development server
+cd ../.. && npm run dev
 ```
 
-Without global `turbo`, use your package manager:
+## Environment Variables
 
-```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
+| Variable | Service |
+|----------|---------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk |
+| `CLERK_SECRET_KEY` | Clerk |
+| `CLERK_JWT_ISSUER_DOMAIN` | Clerk (for Convex auth) |
+| `NEXT_PUBLIC_CONVEX_URL` | Convex |
+| `OPENAI_API_KEY` | OpenAI (Mo + screenshot analysis) |
+| `MONO_SECRET_KEY` | Mono (Nigerian bank connections) |
+| `NEXT_PUBLIC_MONO_PUBLIC_KEY` | Mono (Connect widget) |
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+## License
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Private. All rights reserved.

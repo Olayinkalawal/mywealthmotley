@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { WmDisclaimer } from "@/components/wm/wm-disclaimer";
 import { useCurrency } from "@/hooks/use-currency";
+import Link from "next/link";
 
 const calculateProjection = (
   initial: number,
@@ -1414,6 +1415,636 @@ function DisclaimerSection() {
   );
 }
 
+// ── Mock Holdings Data ──────────────────────────────────────────────
+const MOCK_HOLDINGS = [
+  { name: "Vanguard S&P 500 ETF", ticker: "VOO", quantity: 12, baseValue: 5280000 },
+  { name: "Apple Inc.", ticker: "AAPL", quantity: 25, baseValue: 1875000 },
+  { name: "Microsoft Corp.", ticker: "MSFT", quantity: 18, baseValue: 1620000 },
+  { name: "Vanguard Total Bond Market", ticker: "BND", quantity: 40, baseValue: 960000 },
+  { name: "Invesco QQQ Trust", ticker: "QQQ", quantity: 8, baseValue: 720000 },
+  { name: "Tesla Inc.", ticker: "TSLA", quantity: 10, baseValue: 450000 },
+  { name: "Bitcoin (BTC)", ticker: "BTC", quantity: 0.15, baseValue: 375000 },
+  { name: "Ethereum (ETH)", ticker: "ETH", quantity: 2.5, baseValue: 225000 },
+];
+
+function generateDailyChanges() {
+  return MOCK_HOLDINGS.map((h) => {
+    const changePercent = -3 + Math.random() * 8; // -3% to +5%
+    const changeAmount = Math.round(h.baseValue * (changePercent / 100));
+    return {
+      ...h,
+      currentValue: h.baseValue + changeAmount,
+      changeAmount,
+      changePercent: Math.round(changePercent * 100) / 100,
+    };
+  });
+}
+
+function generateGrowthData(currentTotal: number) {
+  const days = 30;
+  const startValue = currentTotal * 0.8;
+  const points: number[] = [];
+  for (let i = 0; i < days; i++) {
+    const progress = i / (days - 1);
+    const target = startValue + (currentTotal - startValue) * progress;
+    const noise = (Math.random() - 0.45) * currentTotal * 0.015;
+    points.push(Math.round(target + noise));
+  }
+  points[days - 1] = currentTotal;
+  return points;
+}
+
+// ── Portfolio Value Header ──────────────────────────────────────────
+function PortfolioValueHeader({
+  totalValue,
+  dailyChangeAmount,
+  dailyChangePercent,
+  lastUpdated,
+  onRefresh,
+  formatAmount,
+}: {
+  totalValue: number;
+  dailyChangeAmount: number;
+  dailyChangePercent: number;
+  lastUpdated: string;
+  onRefresh: () => void;
+  formatAmount: (n: number) => string;
+}) {
+  const isPositive = dailyChangeAmount >= 0;
+  const [refreshHovered, setRefreshHovered] = useState(false);
+
+  return (
+    <div
+      className="glass-card"
+      style={{
+        background: "rgba(255, 255, 255, 0.04)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRadius: "32px",
+        padding: "40px",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Glow accent */}
+      <div
+        style={{
+          position: "absolute",
+          right: "-120px",
+          top: "-120px",
+          width: "320px",
+          height: "320px",
+          background: isPositive
+            ? "rgba(52, 211, 153, 0.08)"
+            : "rgba(239, 68, 68, 0.08)",
+          borderRadius: "50%",
+          filter: "blur(80px)",
+          pointerEvents: "none",
+        }}
+      />
+
+      <div style={{ position: "relative", zIndex: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+          <span
+            className="font-mono"
+            style={{
+              fontSize: "0.75rem",
+              color: "#968a84",
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+            }}
+          >
+            Total Portfolio Value
+          </span>
+          <button
+            onClick={onRefresh}
+            onMouseEnter={() => setRefreshHovered(true)}
+            onMouseLeave={() => setRefreshHovered(false)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "8px 16px",
+              background: refreshHovered ? "rgba(255, 179, 71, 0.12)" : "rgba(255, 255, 255, 0.06)",
+              border: `1px solid ${refreshHovered ? "rgba(255, 179, 71, 0.3)" : "rgba(255, 255, 255, 0.08)"}`,
+              borderRadius: "12px",
+              color: refreshHovered ? "#ffb347" : "#968a84",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "0.75rem",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
+
+        <h1
+          className="font-mono"
+          style={{
+            fontSize: "3.5rem",
+            color: "#ffffff",
+            lineHeight: 1,
+            fontWeight: 700,
+            marginBottom: "16px",
+          }}
+        >
+          {formatAmount(totalValue)}
+        </h1>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "6px 12px",
+              borderRadius: "10px",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              background: isPositive ? "rgba(52, 211, 153, 0.1)" : "rgba(239, 68, 68, 0.1)",
+              color: isPositive ? "#34d399" : "#ef4444",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              {isPositive ? (
+                <polyline points="18 15 12 9 6 15" />
+              ) : (
+                <polyline points="6 9 12 15 18 9" />
+              )}
+            </svg>
+            {isPositive ? "+" : ""}{formatAmount(dailyChangeAmount)}
+          </div>
+          <span
+            className="font-mono"
+            style={{
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              color: isPositive ? "#34d399" : "#ef4444",
+            }}
+          >
+            ({isPositive ? "+" : ""}{dailyChangePercent.toFixed(2)}%) today
+          </span>
+        </div>
+
+        <span style={{ fontSize: "0.75rem", color: "#968a84" }}>
+          Last updated: {lastUpdated}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Holdings Table ──────────────────────────────────────────────────
+function HoldingsTable({
+  holdings,
+  formatAmount,
+}: {
+  holdings: ReturnType<typeof generateDailyChanges>;
+  formatAmount: (n: number) => string;
+}) {
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+
+  return (
+    <div
+      className="glass-card"
+      style={{
+        background: "rgba(255, 255, 255, 0.04)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRadius: "24px",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ padding: "24px 24px 16px" }}>
+        <h3 className="font-display" style={{ fontSize: "1.25rem", color: "#ffffff", marginBottom: "4px" }}>
+          Holdings
+        </h3>
+        <p style={{ fontSize: "0.75rem", color: "#968a84" }}>
+          Values are based on your last screenshot import. For real-time prices, re-upload a current screenshot.
+        </p>
+      </div>
+      <div style={{ width: "100%", overflowX: "auto", paddingBottom: "8px" }} className="table-container">
+        <table style={{ width: "100%", textAlign: "left", minWidth: "720px", whiteSpace: "nowrap", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
+              {["Name", "Qty", "Current Value", "Daily Change", "Trend"].map((header, i) => (
+                <th
+                  key={header}
+                  className="font-mono"
+                  style={{
+                    padding: "12px 24px",
+                    fontSize: "0.7rem",
+                    color: "#968a84",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    fontWeight: "normal",
+                    textAlign: i >= 2 ? "right" : "left",
+                  }}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {holdings.map((h, idx) => {
+              const isPos = h.changePercent >= 0;
+              return (
+                <tr
+                  key={h.ticker}
+                  style={{
+                    borderBottom: idx < holdings.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none",
+                    background: hoveredRow === idx ? "rgba(255,255,255,0.02)" : "transparent",
+                    transition: "background 0.2s",
+                  }}
+                  onMouseEnter={() => setHoveredRow(idx)}
+                  onMouseLeave={() => setHoveredRow(null)}
+                >
+                  <td style={{ padding: "14px 24px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <div
+                        className="font-mono"
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "10px",
+                          background: "rgba(255,179,71,0.08)",
+                          border: "1px solid rgba(255,179,71,0.15)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: h.ticker.length > 4 ? "9px" : "0.65rem",
+                          fontWeight: 700,
+                          color: "#ffb347",
+                        }}
+                      >
+                        {h.ticker}
+                      </div>
+                      <div>
+                        <p style={{ fontWeight: 600, color: "#ffffff", fontSize: "0.875rem" }}>{h.name}</p>
+                        <p className="font-mono" style={{ fontSize: "0.7rem", color: "#968a84" }}>{h.ticker}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="font-mono" style={{ padding: "14px 24px", fontSize: "0.875rem", color: "#ffffff" }}>
+                    {h.quantity % 1 === 0 ? h.quantity : h.quantity.toFixed(4)}
+                  </td>
+                  <td className="font-mono" style={{ padding: "14px 24px", fontSize: "0.875rem", color: "#ffb347", fontWeight: 600, textAlign: "right" }}>
+                    {formatAmount(h.currentValue)}
+                  </td>
+                  <td style={{ padding: "14px 24px", textAlign: "right" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          color: isPos ? "#34d399" : "#ef4444",
+                        }}
+                      >
+                        {isPos ? "+" : ""}{formatAmount(h.changeAmount)}
+                      </span>
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: "0.7rem",
+                          color: isPos ? "rgba(52,211,153,0.7)" : "rgba(239,68,68,0.7)",
+                        }}
+                      >
+                        {isPos ? "+" : ""}{h.changePercent.toFixed(2)}%
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "14px 24px", textAlign: "right" }}>
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "8px",
+                        background: isPos ? "rgba(52,211,153,0.1)" : "rgba(239,68,68,0.1)",
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isPos ? "#34d399" : "#ef4444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        {isPos ? (
+                          <polyline points="18 15 12 9 6 15" />
+                        ) : (
+                          <polyline points="6 9 12 15 18 9" />
+                        )}
+                      </svg>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Growth Chart (SVG, 30-day) ──────────────────────────────────────
+function GrowthChart({
+  data,
+  formatAmount,
+}: {
+  data: number[];
+  formatAmount: (n: number) => string;
+}) {
+  if (data.length < 2) return null;
+
+  const minVal = Math.min(...data) * 0.98;
+  const maxVal = Math.max(...data) * 1.02;
+  const range = maxVal - minVal || 1;
+  const chartW = 600;
+  const chartH = 180;
+  const padT = 10;
+  const padB = 10;
+  const drawH = chartH - padT - padB;
+
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * chartW;
+    const y = padT + drawH - ((v - minVal) / range) * drawH;
+    return { x, y };
+  });
+
+  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${chartW},${chartH} L0,${chartH} Z`;
+
+  const overallChange = data[data.length - 1]! - data[0]!;
+  const isPositive = overallChange >= 0;
+
+  return (
+    <div
+      className="glass-card"
+      style={{
+        background: "rgba(255, 255, 255, 0.04)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRadius: "24px",
+        padding: "24px 24px 20px",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <h3 className="font-display" style={{ fontSize: "1.25rem", color: "#ffffff" }}>
+          30-Day Growth
+        </h3>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "4px 10px",
+            borderRadius: "8px",
+            background: isPositive ? "rgba(52,211,153,0.1)" : "rgba(239,68,68,0.1)",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            color: isPositive ? "#34d399" : "#ef4444",
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            {isPositive ? (
+              <polyline points="18 15 12 9 6 15" />
+            ) : (
+              <polyline points="6 9 12 15 18 9" />
+            )}
+          </svg>
+          {isPositive ? "+" : ""}{formatAmount(overallChange)}
+        </div>
+      </div>
+
+      <div style={{ position: "relative", width: "100%", height: "180px" }}>
+        {/* Y-axis labels */}
+        <div
+          className="font-mono"
+          style={{
+            position: "absolute",
+            left: "-4px",
+            top: 0,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            fontSize: "9px",
+            color: "rgba(150,138,132,0.5)",
+            paddingBottom: "4px",
+            paddingTop: "4px",
+            textAlign: "right",
+            width: "0",
+          }}
+        >
+          <span style={{ transform: "translateX(-100%)", paddingRight: "8px", whiteSpace: "nowrap" }}>{formatAmount(Math.round(maxVal))}</span>
+          <span style={{ transform: "translateX(-100%)", paddingRight: "8px", whiteSpace: "nowrap" }}>{formatAmount(Math.round((maxVal + minVal) / 2))}</span>
+          <span style={{ transform: "translateX(-100%)", paddingRight: "8px", whiteSpace: "nowrap" }}>{formatAmount(Math.round(minVal))}</span>
+        </div>
+
+        <svg width="100%" height="100%" viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" style={{ overflow: "visible" }}>
+          <defs>
+            <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={isPositive ? "#34d399" : "#ef4444"} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={isPositive ? "#34d399" : "#ef4444"} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          {/* Grid lines */}
+          {[0.25, 0.5, 0.75].map((frac) => (
+            <line
+              key={frac}
+              x1="0"
+              y1={padT + drawH * (1 - frac)}
+              x2={chartW}
+              y2={padT + drawH * (1 - frac)}
+              stroke="rgba(255,255,255,0.04)"
+              strokeWidth="1"
+            />
+          ))}
+          <path d={areaPath} fill="url(#growthGrad)" />
+          <path d={linePath} fill="none" stroke={isPositive ? "#34d399" : "#ef4444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* End dot */}
+          <circle
+            cx={points[points.length - 1]!.x}
+            cy={points[points.length - 1]!.y}
+            r="4"
+            fill="#0d0b0a"
+            stroke={isPositive ? "#34d399" : "#ef4444"}
+            strokeWidth="2"
+          />
+        </svg>
+      </div>
+
+      {/* X-axis labels */}
+      <div
+        className="font-mono"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "9px",
+          color: "rgba(150,138,132,0.5)",
+          marginTop: "8px",
+        }}
+      >
+        <span>30d ago</span>
+        <span>20d ago</span>
+        <span>10d ago</span>
+        <span>Today</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Update Prompt Card ──────────────────────────────────────────────
+function UpdatePromptCard({ daysSinceUpdate }: { daysSinceUpdate: number }) {
+  const [hovered, setHovered] = useState(false);
+
+  if (daysSinceUpdate < 7) return null;
+
+  return (
+    <div
+      className="glass-card"
+      style={{
+        background: "linear-gradient(135deg, rgba(255, 179, 71, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%)",
+        border: "1px solid rgba(255, 179, 71, 0.2)",
+        borderRadius: "24px",
+        padding: "28px 32px",
+        display: "flex",
+        alignItems: "center",
+        gap: "20px",
+      }}
+    >
+      {/* Mascot icon */}
+      <div
+        style={{
+          width: "52px",
+          height: "52px",
+          borderRadius: "50%",
+          background: "rgba(255, 179, 71, 0.12)",
+          border: "1px solid rgba(255, 179, 71, 0.25)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          fontSize: "1.5rem",
+        }}
+      >
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffb347" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+      </div>
+
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: "0.95rem", color: "#ffffff", fontWeight: 600, marginBottom: "4px" }}>
+          Your portfolio was last updated {daysSinceUpdate} days ago
+        </p>
+        <p style={{ fontSize: "0.8rem", color: "#968a84" }}>
+          Upload a fresh screenshot to see your latest values and daily changes.
+        </p>
+      </div>
+
+      <Link
+        href="/portfolio/import"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "10px 24px",
+          background: hovered ? "#ffb347" : "rgba(255, 179, 71, 0.15)",
+          border: `1px solid ${hovered ? "#ffb347" : "rgba(255, 179, 71, 0.3)"}`,
+          borderRadius: "14px",
+          color: hovered ? "#0d0b0a" : "#ffb347",
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "0.8rem",
+          fontWeight: 700,
+          textDecoration: "none",
+          cursor: "pointer",
+          transition: "all 0.2s",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+        Update Now
+      </Link>
+    </div>
+  );
+}
+
+// ── Portfolio Value Section (wraps header, table, chart, prompt) ─────
+function PortfolioValueSection() {
+  const { format: fmtCurr } = useCurrency();
+  const [holdings, setHoldings] = useState(() => generateDailyChanges());
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const totalValue = useMemo(() => holdings.reduce((sum, h) => sum + h.currentValue, 0), [holdings]);
+  const totalBaseValue = useMemo(() => holdings.reduce((sum, h) => sum + h.baseValue, 0), [holdings]);
+  const dailyChangeAmount = totalValue - totalBaseValue;
+  const dailyChangePercent = totalBaseValue > 0 ? (dailyChangeAmount / totalBaseValue) * 100 : 0;
+
+  const growthData = useMemo(() => generateGrowthData(totalValue), [totalValue, refreshKey]);
+
+  const handleRefresh = useCallback(() => {
+    setHoldings(generateDailyChanges());
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  const now = new Date();
+  const lastUpdated = now.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Mock: last import was 14 days ago
+  const daysSinceUpdate = 14;
+
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      <h2
+        className="font-display"
+        style={{
+          fontSize: "1.875rem",
+          color: "#ffffff",
+          paddingLeft: "8px",
+          paddingRight: "8px",
+        }}
+      >
+        My Portfolio
+      </h2>
+
+      <PortfolioValueHeader
+        totalValue={totalValue}
+        dailyChangeAmount={dailyChangeAmount}
+        dailyChangePercent={dailyChangePercent}
+        lastUpdated={lastUpdated}
+        onRefresh={handleRefresh}
+        formatAmount={fmtCurr}
+      />
+
+      <UpdatePromptCard daysSinceUpdate={daysSinceUpdate} />
+
+      <HoldingsTable holdings={holdings} formatAmount={fmtCurr} />
+
+      <GrowthChart data={growthData} formatAmount={fmtCurr} />
+    </section>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────
 export default function PortfolioPage() {
   return (
@@ -1496,6 +2127,7 @@ export default function PortfolioPage() {
         </div>
       </section>
 
+      <PortfolioValueSection />
       <SimulatorSection />
       <StrategySection />
       <ETFTable />

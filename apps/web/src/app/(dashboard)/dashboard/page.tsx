@@ -724,6 +724,313 @@ function CurrencyBreakdown() {
   );
 }
 
+// ── Financial News Types & Data ────────────────────────────────────
+
+type NewsCategory = "bonds" | "markets" | "policy" | "savings" | "crypto";
+
+const CATEGORY_COLORS: Record<NewsCategory, { bg: string; text: string }> = {
+  bonds: { bg: "rgba(96, 165, 250, 0.15)", text: "#60a5fa" },
+  markets: { bg: "rgba(52, 211, 153, 0.15)", text: "#34d399" },
+  policy: { bg: "rgba(251, 191, 36, 0.15)", text: "#fbbf24" },
+  savings: { bg: "rgba(192, 132, 252, 0.15)", text: "#c084fc" },
+  crypto: { bg: "rgba(244, 114, 182, 0.15)", text: "#f472b6" },
+};
+
+interface NewsItem {
+  title: string;
+  summary: string;
+  category: NewsCategory;
+  region: string;
+  source: string;
+  publishedAt: number;
+}
+
+const MOCK_NEWS: NewsItem[] = [
+  {
+    title: "FGN Bonds Currently Yielding 18.5%",
+    summary:
+      "The Nigerian government is offering savings bonds at 18.5% annual yield. This is a fixed-income option where the government borrows money from you and pays it back with interest. Think of it like lending money to the government.",
+    category: "bonds",
+    region: "NG",
+    source: "DMO",
+    publishedAt: Date.now(),
+  },
+  {
+    title: "Bank of England Holds Interest Rate at 4.5%",
+    summary:
+      "The UK central bank kept interest rates steady. This means savings accounts and mortgage rates stay roughly the same for now. If you have a variable rate mortgage, no change to your payments.",
+    category: "policy",
+    region: "GB",
+    source: "Bank of England",
+    publishedAt: Date.now() - 1 * 60 * 60 * 1000,
+  },
+  {
+    title: "S&P 500 Up 12% Year-to-Date",
+    summary:
+      "The 500 biggest US companies have grown 12% in value this year on average. If you hold a global equity index fund, this is part of what\u2019s driving your returns.",
+    category: "markets",
+    region: "global",
+    source: "Market Data",
+    publishedAt: Date.now() - 2 * 60 * 60 * 1000,
+  },
+  {
+    title: "CBN Lifts Restrictions on Crypto Trading",
+    summary:
+      "The Central Bank of Nigeria has eased restrictions on cryptocurrency trading through licensed exchanges. This means Nigerians can now more easily buy and sell crypto through regulated platforms.",
+    category: "crypto",
+    region: "NG",
+    source: "CBN",
+    publishedAt: Date.now() - 3 * 60 * 60 * 1000,
+  },
+  {
+    title: "UK ISA Allowance Remains \u00A320,000",
+    summary:
+      "You can still invest up to \u00A320,000 per year in your ISA tax-free. Any gains, dividends, or interest earned inside your ISA are completely tax-free. If you haven\u2019t maxed yours out, consider it.",
+    category: "savings",
+    region: "GB",
+    source: "HMRC",
+    publishedAt: Date.now() - 4 * 60 * 60 * 1000,
+  },
+];
+
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function FinancialNewsSection({ userCountry }: { userCountry?: string }) {
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+
+  // Filter news by user's country (show their region + global), or show all
+  const filteredNews = useMemo(() => {
+    let items = MOCK_NEWS;
+
+    // Region filter: show user's region + global
+    if (userCountry) {
+      items = items.filter(
+        (n) => n.region === userCountry || n.region === "global"
+      );
+    }
+
+    // Category filter
+    if (activeFilter !== "all") {
+      items = items.filter((n) => n.category === activeFilter);
+    }
+
+    return items;
+  }, [userCountry, activeFilter]);
+
+  const filters = ["all", "bonds", "markets", "policy", "savings", "crypto"];
+
+  return (
+    <section style={{ marginTop: "48px" }}>
+      <div
+        style={{
+          background: "rgba(255, 255, 255, 0.04)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "32px",
+          padding: "32px",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "24px",
+            flexWrap: "wrap",
+            gap: "16px",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'DynaPuff', cursive",
+              fontSize: "1.5rem",
+              color: "#ffffff",
+            }}
+          >
+            Financial News
+          </div>
+
+          {/* Category filters */}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {filters.map((f) => (
+              <button
+                key={f}
+                onClick={() => setActiveFilter(f)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "999px",
+                  border:
+                    activeFilter === f
+                      ? "1px solid rgba(255, 179, 71, 0.4)"
+                      : "1px solid rgba(255, 255, 255, 0.1)",
+                  background:
+                    activeFilter === f
+                      ? "rgba(255, 179, 71, 0.15)"
+                      : "rgba(255, 255, 255, 0.04)",
+                  color: activeFilter === f ? "#ffb347" : "#968a84",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "0.7rem",
+                  textTransform: "capitalize" as const,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {f === "all" ? "All" : f}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* News cards - scrollable list */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            maxHeight: "600px",
+            overflowY: "auto",
+            paddingRight: "4px",
+          }}
+        >
+          {filteredNews.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "40px 20px",
+                color: "#968a84",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.85rem",
+              }}
+            >
+              No news items for this filter.
+            </div>
+          ) : (
+            filteredNews.map((item, idx) => {
+              const catColor =
+                CATEGORY_COLORS[item.category] || CATEGORY_COLORS.markets;
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                    borderRadius: "20px",
+                    padding: "24px",
+                    transition: "border-color 0.2s ease",
+                  }}
+                >
+                  {/* Category badge + region */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        padding: "3px 10px",
+                        borderRadius: "999px",
+                        background: catColor.bg,
+                        color: catColor.text,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: "0.65rem",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {item.category}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: "0.65rem",
+                        color: "#968a84",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {item.region === "global"
+                        ? "Global"
+                        : item.region}
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <div
+                    style={{
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      color: "#ffffff",
+                      marginBottom: "8px",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {item.title}
+                  </div>
+
+                  {/* Summary */}
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "#c4bbaf",
+                      lineHeight: 1.6,
+                      margin: "0 0 12px 0",
+                    }}
+                  >
+                    {item.summary}
+                  </p>
+
+                  {/* Source + time */}
+                  <div
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "0.7rem",
+                      color: "#968a84",
+                    }}
+                  >
+                    {item.source} &middot; {formatTimeAgo(item.publishedAt)}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Compliance disclaimer */}
+        <div
+          style={{
+            marginTop: "20px",
+            padding: "16px",
+            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "0.65rem",
+            color: "#968a84",
+            lineHeight: 1.5,
+            textAlign: "center",
+          }}
+        >
+          This information is provided for educational purposes only and does
+          not constitute investment advice or a recommendation to buy, sell, or
+          hold any investment.
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -735,6 +1042,10 @@ export default function DashboardPage() {
   const spendingSummary = useQuery(
     api.transactions.getSpendingSummary,
     isAuthenticated ? { startDate, endDate } : "skip",
+  );
+  const currentUser = useQuery(
+    api.users.getUser,
+    isAuthenticated ? {} : "skip",
   );
   const netWorth = useQuery(
     api.allMyMoney.getNetWorth,
@@ -1087,6 +1398,9 @@ export default function DashboardPage() {
             </button>
           </div>
         </section>
+
+        {/* Financial News */}
+        <FinancialNewsSection userCountry={currentUser?.country} />
       </main>
     </div>
   );

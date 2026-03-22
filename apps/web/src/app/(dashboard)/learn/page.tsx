@@ -1,94 +1,187 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  BookOpen,
+  PlayCircle,
+  Question,
+  PencilSimple,
+  CheckCircle,
+  Lock,
+  ArrowRight,
+  Clock,
+  Lightning,
+} from "@phosphor-icons/react";
 
 // ── Types ────────────────────────────────────────────────────────────
+type ContentType = "article" | "video" | "quiz" | "exercise";
+
 interface Lesson {
-  status: "done" | "active" | "locked";
+  id: string;
   label: string;
   time: string;
-  color?: string;
+  contentType: ContentType;
+  courseUrl: string;
   desc?: string;
-  activeBg?: string;
-  btnBg?: string;
-  btnHover?: string;
-  btnTextColor?: string;
 }
 
-interface PathCardProps {
+interface LearningPath {
+  id: string;
   pathNum: string;
-  icon: React.ReactNode;
-  iconColor: string;
-  iconBg: string;
-  iconBorder: string;
-  pathNumStyle: React.CSSProperties;
-  cardStyle?: React.CSSProperties;
-  cardGlow?: React.CSSProperties;
   title: string;
   subtitle: string;
-  progress: number;
-  progressColor: string;
-  progressGlow: string;
-  progressLabelColor: string;
+  color: string;
+  colorLight: string;
+  colorBg: string;
+  colorBorder: string;
+  icon: React.ReactNode;
   lessons: Lesson[];
 }
 
-// ── Continue Button ──────────────────────────────────────────────────
-function ContinueButton({
-  btnBg,
-  btnHover,
-  btnTextColor,
+interface PathCardProps {
+  path: LearningPath;
+  completedLessons: Set<string>;
+  onToggleComplete: (lessonId: string) => void;
+}
+
+// ── Storage helpers ──────────────────────────────────────────────────
+const STORAGE_KEY = "wm-learn-progress";
+
+function getCompletedLessons(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {
+    /* ignore */
+  }
+  return new Set();
+}
+
+function saveCompletedLessons(completed: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...completed]));
+  } catch {
+    /* ignore */
+  }
+}
+
+// ── Content type icon ────────────────────────────────────────────────
+function ContentTypeIcon({
+  type,
+  size = 14,
+  color,
 }: {
-  btnBg: string;
-  btnHover: string;
-  btnTextColor: string;
+  type: ContentType;
+  size?: number;
+  color?: string;
+}) {
+  const c = color || "#968a84";
+  switch (type) {
+    case "article":
+      return <BookOpen size={size} weight="bold" color={c} />;
+    case "video":
+      return <PlayCircle size={size} weight="bold" color={c} />;
+    case "quiz":
+      return <Question size={size} weight="bold" color={c} />;
+    case "exercise":
+      return <PencilSimple size={size} weight="bold" color={c} />;
+  }
+}
+
+function contentTypeLabel(type: ContentType): string {
+  switch (type) {
+    case "article":
+      return "Article";
+    case "video":
+      return "Video";
+    case "quiz":
+      return "Quiz";
+    case "exercise":
+      return "Exercise";
+  }
+}
+
+// ── Course link button ───────────────────────────────────────────────
+function CourseLinkButton({
+  type,
+  url,
+  accentColor,
+}: {
+  type: ContentType;
+  url: string;
+  accentColor: string;
 }) {
   const [hovered, setHovered] = useState(false);
+  const label =
+    type === "video"
+      ? "Watch Video"
+      : type === "quiz"
+        ? "Take Quiz"
+        : type === "exercise"
+          ? "Start Exercise"
+          : "Take Course";
+
   return (
-    <button
-      className="ml-9 mt-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors inline-block w-max"
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all inline-flex items-center gap-2 w-max no-underline"
       style={{
         fontFamily: "'JetBrains Mono', monospace",
-        background: hovered ? btnHover : btnBg,
-        color: btnTextColor,
-        border: "none",
+        background: hovered ? accentColor : `${accentColor}22`,
+        color: hovered ? "#0d0b0a" : accentColor,
+        border: `1px solid ${accentColor}44`,
         cursor: "pointer",
+        textDecoration: "none",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      Continue
-    </button>
+      <ContentTypeIcon type={type} size={12} color={hovered ? "#0d0b0a" : accentColor} />
+      {label}
+      <ArrowRight size={12} weight="bold" />
+    </a>
   );
 }
 
 // ── Path Card ────────────────────────────────────────────────────────
-function PathCard({
-  pathNum,
-  icon,
-  iconColor,
-  iconBg,
-  iconBorder,
-  pathNumStyle,
-  cardStyle,
-  cardGlow,
-  title,
-  subtitle,
-  progress,
-  progressColor,
-  progressGlow,
-  progressLabelColor,
-  lessons,
-}: PathCardProps) {
+function PathCard({ path, completedLessons, onToggleComplete }: PathCardProps) {
+  const totalLessons = path.lessons.length;
+  const doneCount = path.lessons.filter((l) => completedLessons.has(l.id)).length;
+  const progress = totalLessons > 0 ? Math.round((doneCount / totalLessons) * 100) : 0;
+
+  // Find the first incomplete lesson (the "active" one)
+  const activeLessonId = path.lessons.find((l) => !completedLessons.has(l.id))?.id;
+
+  const isHighlighted = path.id === "investing";
+
   return (
     <div
       className="glass-card rounded-[24px] p-6 flex flex-col h-full group relative overflow-hidden"
-      style={cardStyle || {}}
+      style={
+        isHighlighted
+          ? {
+              borderColor: `${path.color}4d`,
+              boxShadow: `0 0 20px ${path.color}0d`,
+            }
+          : {}
+      }
     >
-      {cardGlow && (
+      {isHighlighted && (
         <div
           className="absolute pointer-events-none"
-          style={{ position: "absolute", ...cardGlow }}
+          style={{
+            right: 0,
+            top: 0,
+            width: "8rem",
+            height: "8rem",
+            background: `${path.color}0d`,
+            borderRadius: "50%",
+            filter: "blur(40px)",
+          }}
         />
       )}
 
@@ -97,21 +190,23 @@ function PathCard({
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110"
             style={{
-              background: iconBg,
-              border: `1px solid ${iconBorder}`,
-              color: iconColor,
+              background: path.colorBg,
+              border: `1px solid ${path.colorBorder}`,
+              color: path.color,
             }}
           >
-            {icon}
+            {path.icon}
           </div>
           <span
             className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-md"
             style={{
               fontFamily: "'JetBrains Mono', monospace",
-              ...pathNumStyle,
+              color: isHighlighted ? path.color : "#968a84",
+              background: isHighlighted ? `${path.color}1a` : "rgba(255,255,255,0.05)",
+              border: `1px solid ${isHighlighted ? `${path.color}33` : "rgba(255,255,255,0.08)"}`,
             }}
           >
-            {pathNum}
+            {path.pathNum}
           </span>
         </div>
         <div>
@@ -119,22 +214,24 @@ function PathCard({
             className="text-2xl text-white mb-1"
             style={{ fontFamily: "'DynaPuff', cursive" }}
           >
-            {title}
+            {path.title}
           </h3>
           <p className="text-sm" style={{ color: "#968a84" }}>
-            {subtitle}
+            {path.subtitle}
           </p>
         </div>
+
+        {/* Progress section */}
         <div className="mt-2">
           <div className="flex justify-between items-end mb-2">
             <span
               className="text-xs uppercase tracking-wider"
               style={{
                 fontFamily: "'JetBrains Mono', monospace",
-                color: progressLabelColor,
+                color: path.color,
               }}
             >
-              Progress
+              {doneCount} of {totalLessons} lessons
             </span>
             <span
               className="text-xs text-white"
@@ -148,133 +245,167 @@ function PathCard({
             style={{ background: "rgba(255,255,255,0.05)" }}
           >
             <div
-              className="h-full rounded-full"
+              className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${progress}%`,
-                background: progressColor,
-                boxShadow: `0 0 10px ${progressGlow}`,
+                background: path.color,
+                boxShadow: `0 0 10px ${path.color}80`,
               }}
             />
           </div>
         </div>
       </div>
 
+      {/* Lessons list */}
       <div
         className="flex flex-col gap-3 flex-grow mt-4 pt-4 relative z-10"
         style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
       >
-        {lessons.map((lesson, idx) => {
-          if (lesson.status === "done") {
+        {path.lessons.map((lesson) => {
+          const isDone = completedLessons.has(lesson.id);
+          const isActive = lesson.id === activeLessonId && !isDone;
+          const isLocked = !isDone && !isActive;
+
+          if (isDone) {
             return (
-              <div key={idx} className="flex items-center gap-3 px-2 py-1">
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: `${lesson.color}33`,
-                    color: lesson.color,
-                  }}
-                >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+              <div key={lesson.id} className="flex flex-col gap-1">
+                <div className="flex items-center gap-3 px-2 py-1">
+                  <button
+                    onClick={() => onToggleComplete(lesson.id)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-transform hover:scale-110"
+                    style={{
+                      background: `${path.color}33`,
+                      color: path.color,
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                    title="Mark as incomplete"
                   >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                    <CheckCircle size={14} weight="fill" />
+                  </button>
+                  <div className="flex flex-col flex-grow min-w-0">
+                    <span
+                      className="text-sm font-medium truncate"
+                      style={{ color: "rgba(255,255,255,0.8)" }}
+                    >
+                      {lesson.label}
+                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <ContentTypeIcon type={lesson.contentType} size={10} color="#968a84" />
+                      <span
+                        className="text-[10px]"
+                        style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: "#968a84",
+                        }}
+                      >
+                        {contentTypeLabel(lesson.contentType)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <Clock size={10} color="#968a84" />
+                    <span
+                      className="text-xs"
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: "#968a84",
+                      }}
+                    >
+                      {lesson.time}
+                    </span>
+                  </div>
                 </div>
-                <span
-                  className="text-sm font-medium truncate flex-grow"
-                  style={{ color: "rgba(255,255,255,0.8)" }}
-                >
-                  {lesson.label}
-                </span>
-                <span
-                  className="text-xs flex-shrink-0"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "#968a84",
-                  }}
-                >
-                  {lesson.time}
-                </span>
               </div>
             );
           }
-          if (lesson.status === "active") {
+
+          if (isActive) {
             return (
               <div
-                key={idx}
+                key={lesson.id}
                 className="lesson-card-expanded rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden"
                 style={{
                   background:
-                    lesson.activeBg ||
-                    "rgba(255, 255, 255, 0.03)",
+                    isHighlighted
+                      ? `${path.color}0d`
+                      : "rgba(255, 255, 255, 0.03)",
                   border: "1px solid rgba(255, 255, 255, 0.08)",
                 }}
               >
                 <div
                   className="absolute left-0 top-0 bottom-0 w-1"
-                  style={{ background: lesson.color }}
+                  style={{ background: path.color }}
                 />
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 animate-spin-slow"
+                  <button
+                    onClick={() => onToggleComplete(lesson.id)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-transform hover:scale-110"
                     style={{
                       background: "rgba(255,255,255,0.1)",
-                      color: lesson.color,
+                      border: `1.5px solid ${path.color}66`,
+                      color: path.color,
+                      cursor: "pointer",
+                      padding: 0,
                     }}
+                    title="Mark as complete"
                   >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21.5 2v6h-6M2.13 15.57a10 10 0 1 0 4.43-8.12" />
-                    </svg>
+                    <Lightning size={10} weight="bold" />
+                  </button>
+                  <div className="flex flex-col flex-grow min-w-0">
+                    <span className="text-sm text-white font-bold truncate">
+                      {lesson.label}
+                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <ContentTypeIcon type={lesson.contentType} size={10} color={path.color} />
+                      <span
+                        className="text-[10px]"
+                        style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: path.color,
+                        }}
+                      >
+                        {contentTypeLabel(lesson.contentType)}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-sm text-white font-bold truncate flex-grow">
-                    {lesson.label}
-                  </span>
-                  <span
-                    className="text-xs flex-shrink-0"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: lesson.color,
-                    }}
-                  >
-                    {lesson.time}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <Clock size={10} color={path.color} />
+                    <span
+                      className="text-xs flex-shrink-0"
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: path.color,
+                      }}
+                    >
+                      {lesson.time}
+                    </span>
+                  </div>
                 </div>
-                <p
-                  className="text-xs leading-relaxed pl-9"
-                  style={{ color: "#968a84" }}
-                >
-                  {lesson.desc}
-                </p>
-                {lesson.btnBg && lesson.btnHover && lesson.btnTextColor && (
-                  <ContinueButton
-                    btnBg={lesson.btnBg}
-                    btnHover={lesson.btnHover}
-                    btnTextColor={lesson.btnTextColor}
-                  />
+                {lesson.desc && (
+                  <p
+                    className="text-xs leading-relaxed pl-9"
+                    style={{ color: "#968a84" }}
+                  >
+                    {lesson.desc}
+                  </p>
                 )}
+                <div className="pl-9">
+                  <CourseLinkButton
+                    type={lesson.contentType}
+                    url={lesson.courseUrl}
+                    accentColor={path.color}
+                  />
+                </div>
               </div>
             );
           }
-          if (lesson.status === "locked") {
+
+          if (isLocked) {
             return (
               <div
-                key={idx}
+                key={lesson.id}
                 className="flex items-center gap-3 px-2 py-1"
                 style={{ opacity: 0.4 }}
               >
@@ -286,35 +417,40 @@ function PathCard({
                     color: "#968a84",
                   }}
                 >
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
+                  <Lock size={10} weight="bold" />
                 </div>
-                <span
-                  className="text-sm font-medium truncate flex-grow"
-                  style={{ color: "rgba(255,255,255,0.8)" }}
-                >
-                  {lesson.label}
-                </span>
-                <span
-                  className="text-xs flex-shrink-0"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "#968a84",
-                  }}
-                >
-                  {lesson.time}
-                </span>
+                <div className="flex flex-col flex-grow min-w-0">
+                  <span
+                    className="text-sm font-medium truncate"
+                    style={{ color: "rgba(255,255,255,0.8)" }}
+                  >
+                    {lesson.label}
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <ContentTypeIcon type={lesson.contentType} size={10} />
+                    <span
+                      className="text-[10px]"
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: "#968a84",
+                      }}
+                    >
+                      {contentTypeLabel(lesson.contentType)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Clock size={10} color="#968a84" />
+                  <span
+                    className="text-xs"
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: "#968a84",
+                    }}
+                  >
+                    {lesson.time}
+                  </span>
+                </div>
               </div>
             );
           }
@@ -325,10 +461,503 @@ function PathCard({
   );
 }
 
+// ── Learning Paths Data ──────────────────────────────────────────────
+const LEARNING_PATHS: LearningPath[] = [
+  {
+    id: "money-basics",
+    pathNum: "Path 1",
+    title: "Money Basics",
+    subtitle: "Master the fundamentals",
+    color: "#34d399",
+    colorLight: "#6ee7b7",
+    colorBg: "rgba(52,211,153,0.1)",
+    colorBorder: "rgba(52,211,153,0.2)",
+    icon: (
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.5-1 2-2h2c1 0 1.5-.5 2-1v-4c0-2-1.5-4-5-4z" />
+        <path d="M2 9v1c0 1.1.9 2 2 2h1" />
+        <path d="M16 11h.01" />
+      </svg>
+    ),
+    lessons: [
+      {
+        id: "mb-1",
+        label: "What is budgeting?",
+        time: "5 min read",
+        contentType: "article",
+        courseUrl: "https://wealthmotley.com/courses/money-basics-1",
+        desc: "Learn the basics of budgeting and why it matters for building wealth.",
+      },
+      {
+        id: "mb-2",
+        label: "The 50/30/20 rule explained",
+        time: "8 min video",
+        contentType: "video",
+        courseUrl: "https://wealthmotley.com/courses/money-basics-2",
+        desc: "A simple framework to split your income: needs, wants, and savings.",
+      },
+      {
+        id: "mb-3",
+        label: "Emergency funds: How much do you need?",
+        time: "6 min read",
+        contentType: "article",
+        courseUrl: "https://wealthmotley.com/courses/money-basics-3",
+        desc: "Why 3-6 months of expenses is the magic number everyone talks about.",
+      },
+      {
+        id: "mb-4",
+        label: "Setting up your first budget",
+        time: "10 min exercise",
+        contentType: "exercise",
+        courseUrl: "https://wealthmotley.com/courses/money-basics-4",
+        desc: "Hands-on: Create a real budget using Mo's guided template.",
+      },
+      {
+        id: "mb-5",
+        label: "Money Basics Quiz",
+        time: "5 min quiz",
+        contentType: "quiz",
+        courseUrl: "https://wealthmotley.com/courses/money-basics-quiz",
+        desc: "Test your knowledge of budgeting fundamentals.",
+      },
+    ],
+  },
+  {
+    id: "investing",
+    pathNum: "Path 2",
+    title: "Investing",
+    subtitle: "Grow your wealth",
+    color: "#ffb347",
+    colorLight: "#e67e22",
+    colorBg: "rgba(255,179,71,0.1)",
+    colorBorder: "rgba(255,179,71,0.2)",
+    icon: (
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+        <polyline points="17 6 23 6 23 12" />
+      </svg>
+    ),
+    lessons: [
+      {
+        id: "inv-1",
+        label: "What are index funds? The broom analogy",
+        time: "10 min video",
+        contentType: "video",
+        courseUrl: "https://wealthmotley.com/courses/investing-1",
+        desc: "Why buying the whole market is like sweeping every room at once.",
+      },
+      {
+        id: "inv-2",
+        label: "Understanding risk: Low, medium, high",
+        time: "7 min read",
+        contentType: "article",
+        courseUrl: "https://wealthmotley.com/courses/investing-2",
+        desc: "Learn how risk levels affect returns and what matches your comfort zone.",
+      },
+      {
+        id: "inv-3",
+        label: "ISA/TFSA: Your tax-free superpower",
+        time: "8 min read",
+        contentType: "article",
+        courseUrl: "https://wealthmotley.com/courses/investing-3",
+        desc: "How to invest without giving the taxman a cut of your gains.",
+      },
+      {
+        id: "inv-4",
+        label: "How to read your investment dashboard",
+        time: "12 min video",
+        contentType: "video",
+        courseUrl: "https://wealthmotley.com/courses/investing-4",
+        desc: "Walk through every chart, number, and metric on your portfolio page.",
+      },
+      {
+        id: "inv-5",
+        label: "Building your first portfolio",
+        time: "15 min exercise",
+        contentType: "exercise",
+        courseUrl: "https://wealthmotley.com/courses/investing-5",
+        desc: "Hands-on: Allocate a mock portfolio across asset classes.",
+      },
+      {
+        id: "inv-6",
+        label: "Investing Quiz",
+        time: "5 min quiz",
+        contentType: "quiz",
+        courseUrl: "https://wealthmotley.com/courses/investing-quiz",
+        desc: "Test your investment knowledge before you put real money in.",
+      },
+    ],
+  },
+  {
+    id: "diaspora",
+    pathNum: "Path 3",
+    title: "Diaspora Finance",
+    subtitle: "Global money strategies",
+    color: "#3b82f6",
+    colorLight: "#2563eb",
+    colorBg: "rgba(59,130,246,0.1)",
+    colorBorder: "rgba(59,130,246,0.2)",
+    icon: (
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="2" y1="12" x2="22" y2="12" />
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+      </svg>
+    ),
+    lessons: [
+      {
+        id: "dia-1",
+        label: "Managing money across two countries",
+        time: "8 min read",
+        contentType: "article",
+        courseUrl: "https://wealthmotley.com/courses/diaspora-1",
+        desc: "Strategies for balancing finances between your home country and abroad.",
+      },
+      {
+        id: "dia-2",
+        label: "Multi-currency strategies",
+        time: "10 min video",
+        contentType: "video",
+        courseUrl: "https://wealthmotley.com/courses/diaspora-2",
+        desc: "How to hold and convert currencies without losing to bad exchange rates.",
+      },
+      {
+        id: "dia-3",
+        label: "Sending money home wisely",
+        time: "6 min read",
+        contentType: "article",
+        courseUrl: "https://wealthmotley.com/courses/diaspora-3",
+        desc: "Compare remittance options so your family gets the most value.",
+      },
+      {
+        id: "dia-4",
+        label: "Diaspora Quiz",
+        time: "5 min quiz",
+        contentType: "quiz",
+        courseUrl: "https://wealthmotley.com/courses/diaspora-quiz",
+        desc: "Test what you know about managing money across borders.",
+      },
+    ],
+  },
+  {
+    id: "japa",
+    pathNum: "Path 4",
+    title: "Japa Planning",
+    subtitle: "Relocation readiness",
+    color: "#a855f7",
+    colorLight: "#9333ea",
+    colorBg: "rgba(168,85,247,0.1)",
+    colorBorder: "rgba(168,85,247,0.2)",
+    icon: (
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+      </svg>
+    ),
+    lessons: [
+      {
+        id: "japa-1",
+        label: "Financial prep for relocation",
+        time: "10 min read",
+        contentType: "article",
+        courseUrl: "https://wealthmotley.com/courses/japa-1",
+        desc: "Everything you need to sort out financially before you leave.",
+      },
+      {
+        id: "japa-2",
+        label: "Proof of funds: What you need",
+        time: "8 min video",
+        contentType: "video",
+        courseUrl: "https://wealthmotley.com/courses/japa-2",
+        desc: "How much proof of funds you need and how to show it properly.",
+      },
+      {
+        id: "japa-3",
+        label: "Setting up banking abroad",
+        time: "7 min read",
+        contentType: "article",
+        courseUrl: "https://wealthmotley.com/courses/japa-3",
+        desc: "Open accounts, build credit, and navigate a new banking system.",
+      },
+      {
+        id: "japa-4",
+        label: "Japa Readiness Quiz",
+        time: "5 min quiz",
+        contentType: "quiz",
+        courseUrl: "https://wealthmotley.com/courses/japa-quiz",
+        desc: "Are you actually financially ready to relocate?",
+      },
+    ],
+  },
+];
+
+// ── Continue Learning Banner ─────────────────────────────────────────
+function ContinueLearningBanner({
+  paths,
+  completedLessons,
+}: {
+  paths: LearningPath[];
+  completedLessons: Set<string>;
+}) {
+  // Find the most recently started path that is incomplete
+  // For MVP, just find the first path with some progress but not fully complete
+  let resumePath: LearningPath | null = null;
+  let resumeLesson: Lesson | null = null;
+
+  for (const p of paths) {
+    const done = p.lessons.filter((l) => completedLessons.has(l.id)).length;
+    if (done > 0 && done < p.lessons.length) {
+      resumePath = p;
+      resumeLesson = p.lessons.find((l) => !completedLessons.has(l.id)) || null;
+      break;
+    }
+  }
+
+  // If no partial path, find the first path with zero progress
+  if (!resumePath) {
+    for (const p of paths) {
+      const done = p.lessons.filter((l) => completedLessons.has(l.id)).length;
+      if (done === 0) {
+        resumePath = p;
+        resumeLesson = p.lessons[0] || null;
+        break;
+      }
+    }
+  }
+
+  if (!resumePath || !resumeLesson) return null;
+
+  const doneCount = resumePath.lessons.filter((l) => completedLessons.has(l.id)).length;
+  const totalCount = resumePath.lessons.length;
+  const progress = Math.round((doneCount / totalCount) * 100);
+
+  return (
+    <div
+      className="glass-card rounded-[24px] p-6 relative overflow-hidden"
+      style={{
+        borderColor: `${resumePath.color}33`,
+        boxShadow: `0 0 30px ${resumePath.color}0d`,
+      }}
+    >
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          left: "-4rem",
+          top: "-4rem",
+          width: "14rem",
+          height: "14rem",
+          background: `${resumePath.color}12`,
+          borderRadius: "50%",
+          filter: "blur(50px)",
+        }}
+      />
+      <div className="relative z-10">
+        <div className="flex items-center gap-2 mb-4">
+          <Lightning size={18} weight="fill" color="#ffb347" />
+          <span
+            className="text-xs uppercase tracking-widest"
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              color: "#ffb347",
+            }}
+          >
+            Continue Learning
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div className="flex-grow min-w-0">
+            <div className="flex items-center gap-3 mb-2">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: resumePath.colorBg,
+                  border: `1px solid ${resumePath.colorBorder}`,
+                  color: resumePath.color,
+                }}
+              >
+                {resumePath.icon}
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-white text-lg font-bold truncate">
+                  {resumeLesson.label}
+                </h3>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span
+                    className="text-xs"
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: "#968a84",
+                    }}
+                  >
+                    {resumePath.title}
+                  </span>
+                  <span style={{ color: "rgba(255,255,255,0.15)" }}>|</span>
+                  <div className="flex items-center gap-1.5">
+                    <ContentTypeIcon
+                      type={resumeLesson.contentType}
+                      size={11}
+                      color={resumePath.color}
+                    />
+                    <span
+                      className="text-xs"
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: resumePath.color,
+                      }}
+                    >
+                      {contentTypeLabel(resumeLesson.contentType)}
+                    </span>
+                  </div>
+                  <span style={{ color: "rgba(255,255,255,0.15)" }}>|</span>
+                  <div className="flex items-center gap-1">
+                    <Clock size={11} color="#968a84" />
+                    <span
+                      className="text-xs"
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: "#968a84",
+                      }}
+                    >
+                      {resumeLesson.time}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mini progress bar */}
+            <div className="flex items-center gap-3 mt-3">
+              <div
+                className="h-1 flex-grow rounded-full overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.05)" }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${progress}%`,
+                    background: resumePath.color,
+                    boxShadow: `0 0 8px ${resumePath.color}80`,
+                  }}
+                />
+              </div>
+              <span
+                className="text-[10px] flex-shrink-0"
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: "#968a84",
+                }}
+              >
+                {doneCount}/{totalCount} done
+              </span>
+            </div>
+          </div>
+
+          <a
+            href={resumeLesson.courseUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-6 py-3 rounded-full text-sm uppercase tracking-wider font-bold transition-all flex-shrink-0 no-underline"
+            style={{
+              fontFamily: "'DynaPuff', cursive",
+              background: resumePath.color,
+              color: "#0d0b0a",
+              boxShadow: `0 0 20px ${resumePath.color}33`,
+              border: "none",
+              cursor: "pointer",
+              textDecoration: "none",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = resumePath!.colorLight;
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = resumePath!.color;
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+          >
+            <ArrowRight size={16} weight="bold" />
+            Resume
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Learn Page ──────────────────────────────────────────────────
 export default function LearnPage() {
   const [tipIndex, setTipIndex] = useState(14);
   const [roastLevel, setRoastLevel] = useState("Nuclear");
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [hydrated, setHydrated] = useState(false);
+
+  // Load progress from localStorage on mount
+  useEffect(() => {
+    const stored = getCompletedLessons();
+    // Seed some default progress for demo purposes if nothing stored
+    if (stored.size === 0) {
+      stored.add("mb-1");
+      stored.add("mb-2");
+      stored.add("inv-1");
+      stored.add("inv-2");
+      stored.add("dia-1");
+      stored.add("japa-1");
+      stored.add("japa-2");
+      saveCompletedLessons(stored);
+    }
+    setCompletedLessons(stored);
+    setHydrated(true);
+  }, []);
+
+  const toggleComplete = useCallback((lessonId: string) => {
+    setCompletedLessons((prev) => {
+      const next = new Set(prev);
+      if (next.has(lessonId)) {
+        next.delete(lessonId);
+      } else {
+        next.add(lessonId);
+      }
+      saveCompletedLessons(next);
+      return next;
+    });
+  }, []);
 
   return (
     <div
@@ -409,6 +1038,14 @@ export default function LearnPage() {
           </svg>
         </div>
       </header>
+
+      {/* Continue Learning Banner */}
+      {hydrated && (
+        <ContinueLearningBanner
+          paths={LEARNING_PATHS}
+          completedLessons={completedLessons}
+        />
+      )}
 
       {/* Top Cards Row */}
       <section
@@ -524,7 +1161,7 @@ export default function LearnPage() {
           </div>
         </div>
 
-        {/* Sholz's Honest Take */}
+        {/* Mo's Honest Take */}
         <div
           className="glass-card rounded-[32px] p-8 flex flex-col relative overflow-hidden"
           style={{
@@ -705,217 +1342,14 @@ export default function LearnPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {/* Path 1: Money Basics */}
-          <PathCard
-            pathNum="Path 1"
-            icon={
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.5-1 2-2h2c1 0 1.5-.5 2-1v-4c0-2-1.5-4-5-4z" />
-                <path d="M2 9v1c0 1.1.9 2 2 2h1" />
-                <path d="M16 11h.01" />
-              </svg>
-            }
-            iconColor="#34d399"
-            iconBg="rgba(52,211,153,0.1)"
-            iconBorder="rgba(52,211,153,0.2)"
-            pathNumStyle={{
-              color: "#968a84",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-            title="Money Basics"
-            subtitle="Master the fundamentals"
-            progress={50}
-            progressColor="#34d399"
-            progressGlow="rgba(52,211,153,0.5)"
-            progressLabelColor="#34d399"
-            lessons={[
-              { status: "done", label: "Budgeting 101", time: "5m", color: "#34d399" },
-              { status: "done", label: "Emergency Funds", time: "10m", color: "#34d399" },
-              {
-                status: "active",
-                label: "Credit & Debt",
-                time: "15m",
-                color: "#34d399",
-                desc: "Learn the difference between good debt and soul-crushing bad debt.",
-                btnBg: "#34d399",
-                btnHover: "#6ee7b7",
-                btnTextColor: "#0d0b0a",
-              },
-              { status: "locked", label: "Saving Strategies", time: "8m" },
-            ]}
-          />
-
-          {/* Path 2: Investing */}
-          <PathCard
-            pathNum="Path 2"
-            icon={
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                <polyline points="17 6 23 6 23 12" />
-              </svg>
-            }
-            iconColor="#ffb347"
-            iconBg="rgba(255,179,71,0.1)"
-            iconBorder="rgba(255,179,71,0.2)"
-            pathNumStyle={{
-              color: "#ffb347",
-              background: "rgba(255,179,71,0.1)",
-              border: "1px solid rgba(255,179,71,0.2)",
-            }}
-            cardStyle={{
-              borderColor: "rgba(255,179,71,0.3)",
-              boxShadow: "0 0 20px rgba(255,179,71,0.05)",
-            }}
-            cardGlow={{
-              right: 0,
-              top: 0,
-              width: "8rem",
-              height: "8rem",
-              background: "rgba(255,179,71,0.05)",
-              borderRadius: "50%",
-              filter: "blur(40px)",
-            }}
-            title="Investing"
-            subtitle="Grow your wealth"
-            progress={50}
-            progressColor="#ffb347"
-            progressGlow="rgba(255,179,71,0.5)"
-            progressLabelColor="#ffb347"
-            lessons={[
-              { status: "done", label: "What is Investing?", time: "5m", color: "#ffb347" },
-              { status: "done", label: "Risk vs Return", time: "8m", color: "#ffb347" },
-              {
-                status: "active",
-                label: "ETFs & Index Funds",
-                time: "12m",
-                color: "#ffb347",
-                activeBg: "rgba(255,179,71,0.05)",
-                desc: "The smart way to own the whole market without picking individual stocks.",
-                btnBg: "#ffb347",
-                btnHover: "#e67e22",
-                btnTextColor: "#0d0b0a",
-              },
-              { status: "locked", label: "Compound Interest", time: "10m" },
-            ]}
-          />
-
-          {/* Path 3: Diaspora */}
-          <PathCard
-            pathNum="Path 3"
-            icon={
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="2" y1="12" x2="22" y2="12" />
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-              </svg>
-            }
-            iconColor="#3b82f6"
-            iconBg="rgba(59,130,246,0.1)"
-            iconBorder="rgba(59,130,246,0.2)"
-            pathNumStyle={{
-              color: "#968a84",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-            title="Diaspora"
-            subtitle="Global money strategies"
-            progress={25}
-            progressColor="#3b82f6"
-            progressGlow="rgba(59,130,246,0.5)"
-            progressLabelColor="#3b82f6"
-            lessons={[
-              { status: "done", label: "Naira Hedging", time: "7m", color: "#3b82f6" },
-              {
-                status: "active",
-                label: "USD Accounts",
-                time: "15m",
-                color: "#3b82f6",
-                desc: "How to set up and manage domiciliary accounts effectively.",
-                btnBg: "#3b82f6",
-                btnHover: "#2563eb",
-                btnTextColor: "#ffffff",
-              },
-              { status: "locked", label: "Intl Transfers", time: "10m" },
-              { status: "locked", label: "Tax Implications", time: "12m" },
-            ]}
-          />
-
-          {/* Path 4: Japa */}
-          <PathCard
-            pathNum="Path 4"
-            icon={
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-              </svg>
-            }
-            iconColor="#a855f7"
-            iconBg="rgba(168,85,247,0.1)"
-            iconBorder="rgba(168,85,247,0.2)"
-            pathNumStyle={{
-              color: "#968a84",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-            title="Japa"
-            subtitle="Relocation readiness"
-            progress={50}
-            progressColor="#a855f7"
-            progressGlow="rgba(168,85,247,0.5)"
-            progressLabelColor="#a855f7"
-            lessons={[
-              { status: "done", label: "Proof of Funds", time: "8m", color: "#a855f7" },
-              { status: "done", label: "Cost of Living", time: "15m", color: "#a855f7" },
-              {
-                status: "active",
-                label: "Remittance",
-                time: "10m",
-                color: "#a855f7",
-                desc: "Best ways to send money back home without losing to wild exchange rates.",
-                btnBg: "#a855f7",
-                btnHover: "#9333ea",
-                btnTextColor: "#ffffff",
-              },
-              { status: "locked", label: "Building Credit", time: "20m" },
-            ]}
-          />
+          {LEARNING_PATHS.map((path) => (
+            <PathCard
+              key={path.id}
+              path={path}
+              completedLessons={completedLessons}
+              onToggleComplete={toggleComplete}
+            />
+          ))}
         </div>
       </section>
 

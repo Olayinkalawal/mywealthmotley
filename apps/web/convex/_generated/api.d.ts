@@ -15,6 +15,7 @@ import type * as budgets from "../budgets.js";
 import type * as crons from "../crons.js";
 import type * as dataRetention from "../dataRetention.js";
 import type * as exchangeRates from "../exchangeRates.js";
+import type * as financialNews from "../financialNews.js";
 import type * as http from "../http.js";
 import type * as japa from "../japa.js";
 import type * as mono from "../mono.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   dataRetention: typeof dataRetention;
   exchangeRates: typeof exchangeRates;
+  financialNews: typeof financialNews;
   http: typeof http;
   japa: typeof japa;
   mono: typeof mono;

@@ -303,6 +303,19 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_unread", ["userId", "isRead"]),
 
+  // ── Financial news (curated, jargon-free) ───────────────────────
+  financialNews: defineTable({
+    title: v.string(),
+    summary: v.string(),
+    region: v.string(), // "NG" | "GB" | "US" | "global"
+    category: v.string(), // "bonds" | "markets" | "policy" | "savings" | "crypto"
+    source: v.string(),
+    originalUrl: v.optional(v.string()),
+    publishedAt: v.number(),
+  })
+    .index("by_region", ["region"])
+    .index("by_publishedAt", ["publishedAt"]),
+
   // ── Waitlist signups ─────────────────────────────────────────────
   waitlist: defineTable({
     email: v.string(),

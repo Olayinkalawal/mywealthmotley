@@ -741,6 +741,205 @@ function AllocationCardDisplay({
   );
 }
 
+// ── Today's Performance ──────────────────────────────────────────
+
+interface DailyPerformanceItem {
+  label: string;
+  icon: React.ReactElement;
+  changeAmount: number;
+  changePercent: number;
+}
+
+function generateDailyPerformance(netWorthTotal: number): DailyPerformanceItem[] {
+  // Generate random daily changes between -3% and +5% for each asset type
+  const types = [
+    { label: "Investments", icon: <StocksIcon />, weight: 0.40 },
+    { label: "Savings", icon: <BankIcon />, weight: 0.25 },
+    { label: "Pension", icon: <PensionIcon />, weight: 0.20 },
+    { label: "Crypto", icon: <CryptoIcon />, weight: 0.15 },
+  ];
+
+  return types.map((t) => {
+    const assetValue = netWorthTotal * t.weight;
+    const changePercent = -3 + Math.random() * 8; // -3% to +5%
+    const changeAmount = Math.round(assetValue * (changePercent / 100));
+    return {
+      label: t.label,
+      icon: t.icon,
+      changeAmount,
+      changePercent: Math.round(changePercent * 100) / 100,
+    };
+  });
+}
+
+function TodaysPerformance({
+  netWorthTotal,
+  currency,
+}: {
+  netWorthTotal: number;
+  currency: string;
+}) {
+  const [perfData, setPerfData] = useState<DailyPerformanceItem[]>([]);
+
+  useEffect(() => {
+    if (netWorthTotal > 0) {
+      setPerfData(generateDailyPerformance(netWorthTotal));
+    }
+  }, [netWorthTotal]);
+
+  if (perfData.length === 0) return null;
+
+  const totalChange = perfData.reduce((s, d) => s + d.changeAmount, 0);
+  const totalPercent =
+    netWorthTotal > 0
+      ? Math.round((totalChange / netWorthTotal) * 10000) / 100
+      : 0;
+  const isTotalPos = totalChange >= 0;
+
+  return (
+    <div style={{ marginBottom: "32px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+        <h2
+          style={{
+            fontFamily: "'DynaPuff', cursive",
+            fontSize: "1.25rem",
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffb347" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+          Today&apos;s Performance
+        </h2>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "5px 12px",
+            borderRadius: "10px",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            background: isTotalPos ? "rgba(52,211,153,0.1)" : "rgba(239,68,68,0.1)",
+            border: `1px solid ${isTotalPos ? "rgba(52,211,153,0.2)" : "rgba(239,68,68,0.2)"}`,
+            color: isTotalPos ? "#34d399" : "#ef4444",
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            {isTotalPos ? (
+              <polyline points="18 15 12 9 6 15" />
+            ) : (
+              <polyline points="6 9 12 15 18 9" />
+            )}
+          </svg>
+          Total: {isTotalPos ? "+" : ""}{formatCurrency(totalChange, currency)} ({isTotalPos ? "+" : ""}{totalPercent.toFixed(2)}%)
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "12px",
+        }}
+      >
+        {perfData.map((item) => {
+          const isPos = item.changePercent >= 0;
+          return (
+            <div
+              key={item.label}
+              style={{
+                background: "rgba(255, 255, 255, 0.04)",
+                border: `1px solid ${isPos ? "rgba(52,211,153,0.12)" : "rgba(239,68,68,0.12)"}`,
+                borderRadius: "20px",
+                padding: "18px 20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                transition: "border-color 0.2s, transform 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+                (e.currentTarget as HTMLDivElement).style.borderColor = isPos ? "rgba(52,211,153,0.3)" : "rgba(239,68,68,0.3)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+                (e.currentTarget as HTMLDivElement).style.borderColor = isPos ? "rgba(52,211,153,0.12)" : "rgba(239,68,68,0.12)";
+              }}
+            >
+              <div
+                style={{
+                  width: "38px",
+                  height: "38px",
+                  borderRadius: "12px",
+                  background: isPos ? "rgba(52,211,153,0.08)" : "rgba(239,68,68,0.08)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: isPos ? "#34d399" : "#ef4444",
+                  flexShrink: 0,
+                }}
+              >
+                {item.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "0.75rem", color: "#968a84", fontWeight: 500, marginBottom: "4px" }}>
+                  {item.label}
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "0.875rem",
+                      fontWeight: 700,
+                      color: isPos ? "#34d399" : "#ef4444",
+                    }}
+                  >
+                    {isPos ? "+" : ""}{formatCurrency(item.changeAmount, currency)}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "0.7rem",
+                      color: isPos ? "rgba(52,211,153,0.7)" : "rgba(239,68,68,0.7)",
+                    }}
+                  >
+                    {isPos ? "+" : ""}{item.changePercent.toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+              <div
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  borderRadius: "6px",
+                  background: isPos ? "rgba(52,211,153,0.1)" : "rgba(239,68,68,0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isPos ? "#34d399" : "#ef4444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  {isPos ? (
+                    <polyline points="18 15 12 9 6 15" />
+                  ) : (
+                    <polyline points="6 9 12 15 18 9" />
+                  )}
+                </svg>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────
 
 export default function AllMyMoneyPage() {
@@ -977,6 +1176,14 @@ export default function AllMyMoneyPage() {
             isLoading={isLoadingBreakdown}
           />
         </div>
+
+        {/* Today's Performance */}
+        {!isLoadingNetWorth && (
+          <TodaysPerformance
+            netWorthTotal={netWorth?.totalNetWorth ?? 0}
+            currency={primaryCurrency}
+          />
+        )}
 
         {/* Section title */}
         <h2 style={s.sectionTitle}>

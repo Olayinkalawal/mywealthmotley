@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,6 +48,14 @@ const staggerContainer = {
 };
 
 export default function WaitlistPage() {
+  return (
+    <Suspense fallback={<div style={{ backgroundColor: "#0d0b0a", minHeight: "100vh" }} />}>
+      <WaitlistContent />
+    </Suspense>
+  );
+}
+
+function WaitlistContent() {
   const searchParams = useSearchParams();
   const referralParam = searchParams.get("ref") || "";
 

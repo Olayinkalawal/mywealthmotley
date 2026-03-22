@@ -36,15 +36,16 @@ const GUARDRAILS = `
 CRITICAL RULES FROM THE REAL SHOLZ:
 1) EDUCATIONAL ONLY. Say: "These are not guaranteed numbers, but at least gives you a good guide."
 2) NEVER recommend specific stocks as primary investments. Say: "Individual stocks make up less than 10% of my portfolio. Most of my money is in ETFs."
-3) NEVER promise guaranteed returns. ALWAYS undersell: "Let's say it doesn't do well. Let's say it just does 12%."
+3) NEVER promise guaranteed returns. ALWAYS undersell: "Let's say it doesn't do well."
 4) ALWAYS mention ISA/TFSA: "Please, all this money has to be in your stocks and shares ISA."
 5) ALWAYS suggest emergency fund first: "Trust me, you need it. It's like burglar proof — you won't know when you need it until you need it."
 6) If asked for personal advice: "I'm here to educate, not advise. For specific decisions, consult a licensed financial adviser. But what I CAN tell you is how things generally work."
-7) NEVER fabricate numbers. Use real historical data or say "historically, the S&P 500 has averaged about 12% per year."
+7) NEVER fabricate numbers. Use real historical data or say "historically, broad market index funds have delivered solid long-term returns."
 8) Format currency in the user's preferred currency.
 9) Keep responses to 2-4 short paragraphs. You are conversational, NOT a textbook. NO emojis.
 10) ALWAYS end with a question ("Does it make sense?") or encouragement ("You're already in a good space.").
-11) NEVER use emojis. Sholz doesn't use emojis in her coaching sessions.`;
+11) NEVER use emojis. Sholz doesn't use emojis in her coaching sessions.
+12) NEVER mention specific fund names, ticker symbols, or ETF products by name. Always use generic asset class descriptions (e.g., "global equity index fund" not "VOO", "technology sector fund" not "XLKS"). This is a regulatory compliance requirement.`;
 
 function getSystemPrompt(tone: string): string {
   switch (tone) {
@@ -398,19 +399,23 @@ async function buildFinancialContext(
     context += `- Family support (black tax) this month: ${fmtNGN(blackTaxSummary.total)} across ${blackTaxSummary.entryCount} entries\n`;
   }
 
-  // Recent notable transactions
+  // Recent transaction summary — aggregated by category, no merchant names or individual amounts
   if (recentTxns && recentTxns.length > 0) {
-    const debits = recentTxns
-      .filter((t: any) => t.type === "debit")
-      .slice(0, 5);
+    const debits = recentTxns.filter((t: any) => t.type === "debit");
     if (debits.length > 0) {
-      const txList = debits
-        .map(
-          (t: any) =>
-            `${t.narration} (${fmtNGN(Math.abs(t.amount))})`
-        )
-        .join("; ");
-      context += `- Recent transactions: ${txList}\n`;
+      // Aggregate by category instead of listing individual transactions
+      const categoryTotals: Record<string, number> = {};
+      for (const t of debits) {
+        const cat = t.category || "Uncategorized";
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + Math.abs(t.amount);
+      }
+      const totalDebitSpend = debits.reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
+      const categorySummary = Object.entries(categoryTotals)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
+        .slice(0, 5)
+        .map(([cat, total]) => `${cat}: ${fmtNGN(total as number)}`)
+        .join(", ");
+      context += `- Recent spending (${debits.length} transactions, total ${fmtNGN(totalDebitSpend)}): ${categorySummary}\n`;
     }
   }
 

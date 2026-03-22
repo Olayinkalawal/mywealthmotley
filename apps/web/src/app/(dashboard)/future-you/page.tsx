@@ -391,9 +391,9 @@ export default function FutureYouPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-[#34d399] animate-pulse" />
             </div>
             <p className="text-white/90 text-[15px] leading-relaxed">
-              &ldquo;At your current rate, your dream apartment is <span className="text-[#ef4444] font-semibold">7 years</span> away.
-              But with a few tweaks, I can get you there in <span className="text-[#34d399] font-semibold">4</span>.
-              Let me show you the difference one decision can make.&rdquo;
+              &ldquo;This tool shows hypothetical scenarios to help you think about your financial future.
+              The numbers below are <span className="text-[#ffb347] font-semibold">illustrations, not predictions</span> &mdash;
+              your actual results will depend on many factors. Let&apos;s explore what&apos;s possible.&rdquo;
             </p>
           </div>
         </div>
@@ -506,7 +506,7 @@ export default function FutureYouPage() {
 
       {/* Comparison Stats */}
       <section className="flex flex-col gap-6">
-        <h2 className="wm-heading text-2xl text-white">The Numbers Don&apos;t Lie</h2>
+        <h2 className="wm-heading text-2xl text-white">Hypothetical Comparison</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {COMPARISON_STATS.map((stat) => (
             <div
@@ -567,18 +567,18 @@ export default function FutureYouPage() {
         <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-[#ffb347]/5 blur-[60px] pointer-events-none" />
         <div className="relative z-10">
           <h3 className="wm-heading text-2xl text-white mb-3">
-            The Best Time to Start Was Yesterday
+            Start Building Your Plan
           </h3>
           <p className="text-sm text-[#968a84] max-w-lg mx-auto mb-6">
-            Every day you wait, Current Path You gets further ahead. But it only takes one decision
-            to change the trajectory. Future You is waiting.
+            Small, consistent steps can make a meaningful difference over time.
+            Explore tools and resources to help you on your journey.
           </p>
           <div className="flex items-center justify-center gap-4">
             <a
               href="/budget"
               className="px-6 py-3 bg-[#ffb347] hover:bg-[#e67e22] text-[#0d0b0a] wm-mono text-xs uppercase tracking-wider font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(255,179,71,0.15)]"
             >
-              Start Building Your Plan
+              Create a Budget
             </a>
             <a
               href="/sholz"
@@ -586,6 +586,31 @@ export default function FutureYouPage() {
             >
               Talk to Mo
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Compliance Disclaimer */}
+      <section
+        className="rounded-[20px] p-6"
+        style={{
+          background: "rgba(255,179,71,0.04)",
+          border: "1px solid rgba(255,179,71,0.15)",
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#ffb347]/10 border border-[#ffb347]/20 flex items-center justify-center shrink-0 mt-0.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffb347" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[#ffb347] mb-1 uppercase tracking-wider" style={{ fontFamily: "JetBrains Mono, monospace" }}>Important Notice</p>
+            <p className="text-xs text-[#968a84] leading-relaxed">
+              These figures are hypothetical illustrations only, not predictions. The value of investments can go down as well as up. You may get back less than you invest. Past performance is not a reliable indicator of future results. This is not financial advice &mdash; consult a qualified financial adviser before making investment decisions. myWealthMotley is not authorised by the FCA or licensed by the Nigerian SEC as investment advisers.
+            </p>
           </div>
         </div>
       </section>

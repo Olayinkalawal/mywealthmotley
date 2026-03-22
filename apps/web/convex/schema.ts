@@ -99,10 +99,11 @@ export default defineSchema({
   // ── AI screenshot import records ───────────────────────────────────
   screenshotImports: defineTable({
     userId: v.id("users"),
-    imageStorageId: v.string(), // Convex file storage ID
+    imageStorageId: v.optional(v.string()), // Convex file storage ID (cleared after purge)
+    imagePurged: v.optional(v.boolean()), // true once the image has been deleted from storage
     extractedData: v.optional(v.string()), // JSON of AI extraction result
     platform: v.optional(v.string()), // Detected platform
-    status: v.string(), // "pending" | "processing" | "completed" | "failed"
+    status: v.string(), // "pending" | "processing" | "review" | "completed" | "failed"
     errorMessage: v.optional(v.string()),
     processedAt: v.optional(v.number()),
     createdAt: v.number(),

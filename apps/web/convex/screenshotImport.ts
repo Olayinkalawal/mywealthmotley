@@ -52,6 +52,7 @@ export const _updateImportStatus = internalMutation({
     extractedData: v.optional(v.string()),
     platform: v.optional(v.string()),
     errorMessage: v.optional(v.string()),
+    imagePurged: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const updates: Record<string, any> = {
@@ -60,6 +61,10 @@ export const _updateImportStatus = internalMutation({
     if (args.extractedData !== undefined) updates.extractedData = args.extractedData;
     if (args.platform !== undefined) updates.platform = args.platform;
     if (args.errorMessage !== undefined) updates.errorMessage = args.errorMessage;
+    if (args.imagePurged) {
+      updates.imagePurged = true;
+      updates.imageStorageId = undefined; // Clear the storage reference
+    }
     if (args.status === "completed" || args.status === "failed") {
       updates.processedAt = Date.now();
     }
@@ -128,6 +133,9 @@ export const saveExtractedHoldings = mutation({
 });
 
 // ── The AI action: analyze screenshot with GPT-4o Vision ────────────
+// Maximum allowed file size: 10 MB
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
 export const analyzeScreenshot = action({
   args: {
     imageStorageId: v.string(),
@@ -141,6 +149,17 @@ export const analyzeScreenshot = action({
     });
 
     try {
+      // Server-side file size validation via storage metadata
+      const metadata = await ctx.storage.getMetadata(args.imageStorageId);
+      if (!metadata) {
+        throw new Error("Could not retrieve file metadata from storage");
+      }
+      if (metadata.size > MAX_FILE_SIZE_BYTES) {
+        throw new Error(
+          `File too large (${(metadata.size / 1024 / 1024).toFixed(1)}MB). Maximum allowed size is 10MB.`
+        );
+      }
+
       // Get the image URL from Convex file storage
       const imageUrl = await ctx.storage.getUrl(args.imageStorageId);
       if (!imageUrl) {
@@ -224,21 +243,37 @@ If you cannot identify specific holdings, still return the JSON structure with w
         holdings: normalizedHoldings,
       };
 
-      // Update the import record with extracted data
+      // ── Process & Purge: delete the screenshot from storage ──────────
+      // Compliance: original images are never stored long-term.
+      // Delete BEFORE updating status so the image is gone even if the
+      // status update fails.
+      await ctx.storage.delete(args.imageStorageId);
+
+      // Update the import record with extracted data and mark image as purged
       await ctx.runMutation(internal.screenshotImport._updateImportStatus, {
         importId: args.importId,
         status: "review",
         extractedData: JSON.stringify(result),
         platform: result.platform,
+        imagePurged: true,
       });
 
       return result;
     } catch (error: any) {
-      // Mark as failed
+      // ── Purge on failure too: never retain user screenshots ──────────
+      try {
+        await ctx.storage.delete(args.imageStorageId);
+      } catch {
+        // Storage deletion failed — image may already be gone; log but don't mask the original error
+        console.error("Failed to purge screenshot on error path:", args.imageStorageId);
+      }
+
+      // Mark as failed and flag the image as purged
       await ctx.runMutation(internal.screenshotImport._updateImportStatus, {
         importId: args.importId,
         status: "failed",
         errorMessage: error.message || "Unknown error during analysis",
+        imagePurged: true,
       });
       throw error;
     }

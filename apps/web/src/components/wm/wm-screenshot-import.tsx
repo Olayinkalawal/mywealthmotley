@@ -617,6 +617,16 @@ function WmScreenshotImport({ isLoading = false, className, onComplete }: WmScre
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* AI accuracy warning banner */}
+                <div className="flex items-start gap-3 rounded-lg border border-[#ffb347]/30 bg-[#ffb347]/10 px-4 py-3 backdrop-blur-sm">
+                  <Warning className="mt-0.5 size-5 shrink-0 text-[#ffb347]" weight="fill" />
+                  <p className="text-sm leading-relaxed text-[#ffb347]">
+                    Financial data shown has been extracted by AI from your
+                    uploaded screenshots. AI can make errors — always verify
+                    extracted amounts against your actual account.
+                  </p>
+                </div>
+
                 {previewUrl && (
                   <div className="mx-auto mb-4 overflow-hidden rounded-lg border">
                     <img

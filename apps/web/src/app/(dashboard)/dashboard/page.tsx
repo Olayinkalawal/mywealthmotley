@@ -533,6 +533,123 @@ export default function DashboardPage() {
           <MascotMini />
         </header>
 
+        {/* Your Net Worth Card */}
+        <section style={{ marginBottom: "48px" }}>
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(255, 179, 71, 0.08) 0%, rgba(255, 179, 71, 0) 60%), rgba(255, 255, 255, 0.04)",
+              border: "1px solid rgba(255, 179, 71, 0.15)",
+              borderRadius: "32px",
+              padding: "40px",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {/* Decorative star */}
+            <span
+              style={{
+                position: "absolute",
+                top: "20px",
+                right: "30px",
+                fontSize: "2rem",
+                color: "#ffb347",
+                opacity: 0.3,
+              }}
+            >
+              &#10022;
+            </span>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "24px" }}>
+              <div>
+                <span
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "0.7rem",
+                    color: "#968a84",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    display: "block",
+                    marginBottom: "8px",
+                  }}
+                >
+                  All Your Money - Total Net Worth
+                </span>
+                {isLoadingNetWorth ? (
+                  <div style={{ ...cs.loadingSkeleton, height: "56px", width: "280px" }} />
+                ) : (
+                  <div
+                    style={{
+                      fontFamily: "'DynaPuff', cursive",
+                      fontSize: "3.5rem",
+                      color: "#ffffff",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {formatCurrency(totalBalance, currency)}
+                  </div>
+                )}
+                {!isLoadingNetWorth && (
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      padding: "4px 12px",
+                      background: "rgba(46, 213, 115, 0.1)",
+                      borderRadius: "999px",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "0.7rem",
+                      color: "#2ed573",
+                      marginTop: "12px",
+                    }}
+                  >
+                    Across all accounts
+                  </div>
+                )}
+              </div>
+
+              {/* Mini trend chart */}
+              <div style={{ width: "240px", height: "80px", flexShrink: 0 }}>
+                <svg width="100%" height="100%" viewBox="0 0 240 80" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ffb347" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="#ffb347" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M0,60 C20,55 40,65 60,50 C80,35 100,45 120,30 C140,15 160,35 180,20 C200,5 220,15 240,8"
+                    fill="none"
+                    stroke="#ffb347"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M0,60 C20,55 40,65 60,50 C80,35 100,45 120,30 C140,15 160,35 180,20 C200,5 220,15 240,8 V80 H0 Z"
+                    fill="url(#nwGrad)"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Quick link to All My Money */}
+            <div style={{ marginTop: "20px", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px" }}>
+              <a
+                href="/all-my-money"
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "0.8rem",
+                  color: "#ffb347",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                View All Accounts &amp; Assets &#8594;
+              </a>
+            </div>
+          </div>
+        </section>
+
         {/* KPI Grid */}
         <section style={cs.kpiGrid}>
           <KPICard

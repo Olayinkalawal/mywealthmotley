@@ -5,6 +5,7 @@ import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { MOCK_BUDGET, MOCK_TRANSACTIONS } from "@/lib/mock-data";
 import type { Budget, Transaction, BudgetCategory } from "@/lib/mock-data";
+import { WmCreateBudgetDialog } from "@/components/wm/wm-create-budget-dialog";
 
 /* ── Inline CSS animations (injected once) ─────────────────────────── */
 const BUDGET_KEYFRAMES = `
@@ -402,6 +403,121 @@ export default function BudgetPage() {
             <div key={i} className="rounded-3xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)", height: i === 1 ? 200 : 120 }} />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  /* ── Empty state: no budget exists for this month ────────────────── */
+  const hasNoBudget = convexBudget === null;
+
+  if (hasNoBudget) {
+    const monthDisplay = new Date().toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+
+    return (
+      <div
+        style={{
+          backgroundColor: "#0d0b0a",
+          color: "#ffffff",
+          fontFamily: "Inter, sans-serif",
+          minHeight: "100vh",
+          position: "relative",
+        }}
+      >
+        {/* Ambient glows */}
+        <div style={{ position: "fixed", borderRadius: "50%", filter: "blur(120px)", zIndex: 0, pointerEvents: "none", top: "-10%", left: "-10%", width: "50vw", height: "50vw", background: "radial-gradient(circle, rgba(255,179,71,0.12) 0%, transparent 70%)" }} />
+        <div style={{ position: "fixed", borderRadius: "50%", filter: "blur(120px)", zIndex: 0, pointerEvents: "none", bottom: "-20%", right: "-10%", width: "60vw", height: "60vw", background: "radial-gradient(circle, rgba(230,126,34,0.06) 0%, transparent 70%)" }} />
+
+        <main className="relative z-10 w-full flex flex-col items-center justify-center gap-8 px-6 md:px-12 lg:px-16 pb-20 min-h-screen" style={{ maxWidth: "1400px", margin: "0 auto" }}>
+          {/* Mascot */}
+          <div className="relative" style={{ width: "120px", height: "120px" }}>
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "#ffb347",
+                borderRadius: "50%",
+                boxShadow: "inset 15px 15px 25px rgba(255,255,255,0.7), inset -20px -20px 30px rgba(0,0,0,0.4), 0 20px 40px rgba(0,0,0,0.5), 0 0 60px rgba(255,179,71,0.2)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                animation: "budgetBounceSlow 3s ease-in-out infinite",
+              }}
+            >
+              <div className="flex gap-4 transform -translate-y-2">
+                <div style={{ width: "18px", height: "9px", border: "4px solid #1a1614", borderRadius: "18px 18px 0 0", borderBottom: 0 }} />
+                <div style={{ width: "18px", height: "9px", border: "4px solid #1a1614", borderRadius: "18px 18px 0 0", borderBottom: 0 }} />
+              </div>
+              <div className="absolute bottom-8" style={{ width: "36px", height: "18px", background: "#1a1614", borderRadius: "0 0 36px 36px" }} />
+            </div>
+          </div>
+
+          {/* Title */}
+          <div className="text-center max-w-lg">
+            <h1
+              className="text-4xl md:text-5xl leading-tight text-white mb-4"
+              style={{ fontFamily: "DynaPuff, cursive", textShadow: "0 4px 6px rgba(0,0,0,0.3)" }}
+            >
+              No Budget <span style={{ color: "#ffb347" }}>Yet.</span>
+            </h1>
+            <p className="text-lg mb-2" style={{ color: "#968a84" }}>
+              You have not set up a budget for {monthDisplay}.
+            </p>
+            <p className="text-sm" style={{ color: "#968a84" }}>
+              Create one now and we will pre-fill categories relevant to your lifestyle.
+              You can adjust everything after.
+            </p>
+          </div>
+
+          {/* Create Budget CTA */}
+          <WmCreateBudgetDialog
+            trigger={
+              <button
+                className="group relative px-8 py-4 rounded-2xl text-lg font-bold transition-all duration-300 cursor-pointer"
+                style={{
+                  background: "#ffb347",
+                  color: "#0d0b0a",
+                  boxShadow: "0 10px 30px rgba(255,179,71,0.3)",
+                  fontFamily: "DynaPuff, cursive",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 15px 40px rgba(255,179,71,0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 10px 30px rgba(255,179,71,0.3)";
+                }}
+              >
+                Create Your {monthDisplay} Budget
+              </button>
+            }
+          />
+
+          {/* Secondary info cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
+            {[
+              { title: "Set Your Income", desc: "Tell us what you earn this month" },
+              { title: "Auto Categories", desc: "We pre-fill Nigerian lifestyle categories" },
+              { title: "Track Spending", desc: "See how your money flows in real time" },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="p-5 rounded-2xl text-center"
+                style={{
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                }}
+              >
+                <h4 className="text-sm font-bold text-white mb-1">{item.title}</h4>
+                <p className="text-xs" style={{ color: "#968a84" }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

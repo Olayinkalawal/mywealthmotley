@@ -25,16 +25,27 @@ import {
   CurrencyDollar,
   Path,
   CaretDoubleLeft,
+  CaretDoubleRight,
 } from "@phosphor-icons/react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarGroup,
+  SidebarGroupLabel,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ROUTES, APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /* ------------------------------------------------------------------ */
 /*  Style constants (matching template exactly)                        */
@@ -92,7 +103,7 @@ function NavBadge({
 }) {
   if (color === "green") {
     return (
-      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[rgba(52,211,153,0.1)] border border-[rgba(52,211,153,0.2)]">
+      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[rgba(52,211,153,0.1)] border border-[rgba(52,211,153,0.2)] group-data-[collapsible=icon]:hidden">
         <span className="w-1.5 h-1.5 rounded-full bg-[#34d399] animate-pulse" />
         <span className="text-[9px] wm-mono font-bold text-[#34d399] uppercase tracking-wide">
           {children}
@@ -101,7 +112,7 @@ function NavBadge({
     );
   }
   return (
-    <span className="px-2 py-0.5 rounded text-[9px] wm-mono font-bold bg-[rgba(255,179,71,0.1)] text-[#ffb347] border border-[rgba(255,179,71,0.2)] uppercase tracking-wide">
+    <span className="px-2 py-0.5 rounded text-[9px] wm-mono font-bold bg-[rgba(255,179,71,0.1)] text-[#ffb347] border border-[rgba(255,179,71,0.2)] uppercase tracking-wide group-data-[collapsible=icon]:hidden">
       {children}
     </span>
   );
@@ -130,8 +141,11 @@ function NavItem({
   badge,
   onClick,
 }: NavItemProps) {
+  const { state, isMobile } = useSidebar();
+  const isCollapsed = state === "collapsed" && !isMobile;
+
   const baseClasses =
-    "group w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 border";
+    "group/navitem w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 border";
 
   let stateClasses = "";
   if (active) {
@@ -147,13 +161,19 @@ function NavItem({
 
   const inner = (
     <>
-      <div className="flex items-center gap-3">
+      <div className={cn(
+        "flex items-center gap-3",
+        isCollapsed && "justify-center w-full"
+      )}>
         <Icon
           size={18}
           weight={active ? "fill" : "bold"}
           className="shrink-0"
         />
-        <span className="text-sm font-medium group-hover:translate-x-1 transition-transform">
+        <span className={cn(
+          "text-sm font-medium group-hover/navitem:translate-x-1 transition-transform",
+          "group-data-[collapsible=icon]:hidden"
+        )}>
           {label}
         </span>
       </div>
@@ -161,28 +181,49 @@ function NavItem({
     </>
   );
 
-  if (isLogout) {
-    return (
-      <button
-        type="button"
-        className={cn(baseClasses, stateClasses, "cursor-pointer")}
-        onClick={onClick}
-      >
-        {inner}
-      </button>
-    );
-  }
-
-  return (
+  const content = isLogout ? (
+    <button
+      type="button"
+      className={cn(
+        baseClasses,
+        stateClasses,
+        "cursor-pointer",
+        isCollapsed && "justify-center px-0"
+      )}
+      onClick={onClick}
+    >
+      {inner}
+    </button>
+  ) : (
     <Link
       href={href}
-      className={cn(baseClasses, stateClasses)}
+      className={cn(
+        baseClasses,
+        stateClasses,
+        isCollapsed && "justify-center px-0"
+      )}
       style={active ? activeShadow : undefined}
       onClick={onClick}
     >
       {inner}
     </Link>
   );
+
+  // When collapsed, wrap in a tooltip
+  if (isCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {content}
+        </TooltipTrigger>
+        <TooltipContent side="right" align="center">
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
 }
 
 /* ------------------------------------------------------------------ */
@@ -191,7 +232,7 @@ function NavItem({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] wm-mono text-[#968a84] uppercase tracking-wider mb-2 px-3">
+    <div className="text-[10px] wm-mono text-[#968a84] uppercase tracking-wider mb-2 px-3 group-data-[collapsible=icon]:hidden">
       {children}
     </div>
   );
@@ -209,9 +250,10 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
   const pathname = usePathname();
   const { signOut } = useClerk();
   const { user } = useUser();
-  const { toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, isMobile } = useSidebar();
   const isAdmin = variant === "admin";
   const [adminOpen, setAdminOpen] = React.useState(isAdmin);
+  const isCollapsed = state === "collapsed" && !isMobile;
 
   useScrollbarStyles();
 
@@ -238,6 +280,7 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
       style={
         {
           "--sidebar-width": "280px",
+          "--sidebar-width-icon": "48px",
           "--sidebar-background": "#0d0b0a",
           "--sidebar-foreground": "#ffffff",
           background: "#0d0b0a",
@@ -250,19 +293,26 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
     >
       {/* ---- Logo ---- */}
       <SidebarHeader className="!p-0 !bg-[#0d0b0a]">
-        <div className="h-20 flex items-center justify-between px-6 border-b border-[rgba(255,255,255,0.08)] shrink-0">
+        <div className={cn(
+          "h-20 flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] shrink-0",
+          isCollapsed ? "px-2 justify-center" : "px-6"
+        )}>
           <Link
             href={isAdmin ? ROUTES.admin : ROUTES.dashboard}
-            className="flex items-center gap-2 group group-data-[collapsible=icon]:justify-center"
+            className={cn(
+              "flex items-center gap-2 group/logo",
+              isCollapsed && "justify-center"
+            )}
           >
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#ffb347] text-[#0d0b0a]">
               <span className="wm-heading text-sm font-bold">W</span>
             </div>
-            <span className="wm-heading text-xl text-white group-hover:text-[#ffb347] transition-colors tracking-tight group-data-[collapsible=icon]:hidden">
+            <span className="wm-heading text-xl text-white group-hover/logo:text-[#ffb347] transition-colors tracking-tight group-data-[collapsible=icon]:hidden">
               {APP_NAME}
               <span className="text-[#ffb347]">.</span>
             </span>
           </Link>
+          {/* Collapse toggle button -- hidden when collapsed (expand button shown in footer instead) */}
           <button
             type="button"
             onClick={toggleSidebar}
@@ -273,7 +323,7 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
         </div>
       </SidebarHeader>
 
-      {/* ---- User Profile Card ---- */}
+      {/* ---- User Profile Card (hidden when collapsed) ---- */}
       <div className="p-5 border-b border-[rgba(255,255,255,0.08)] shrink-0 bg-[rgba(255,255,255,0.04)] group-data-[collapsible=icon]:hidden">
         <div className="flex items-center gap-3 rounded-xl cursor-pointer group">
           {/* Avatar */}
@@ -313,7 +363,7 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
       </div>
 
       {/* ---- Navigation ---- */}
-      <SidebarContent className="!overflow-y-auto !py-6 !px-4 !flex !flex-col !gap-6 !bg-[#0d0b0a] wm-sidebar-scroll">
+      <SidebarContent className="!overflow-y-auto !py-6 !px-4 !flex !flex-col !gap-6 !bg-[#0d0b0a] wm-sidebar-scroll group-data-[collapsible=icon]:!px-1 group-data-[collapsible=icon]:!py-3 group-data-[collapsible=icon]:!gap-2">
         {/* === Your Money === */}
         <div className="flex flex-col gap-1">
           <SectionLabel>Your Money</SectionLabel>
@@ -386,9 +436,9 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
           />
         </div>
 
-        {/* === Admin Portal (only for admin variant) === */}
+        {/* === Admin Portal (only for admin variant, hidden when collapsed) === */}
         {isAdmin && (
-          <div className="flex flex-col gap-1 border-y border-[rgba(255,255,255,0.08)] py-4 my-2 relative">
+          <div className="flex flex-col gap-1 border-y border-[rgba(255,255,255,0.08)] py-4 my-2 relative group-data-[collapsible=icon]:hidden">
             <button
               type="button"
               onClick={() => setAdminOpen(!adminOpen)}
@@ -479,8 +529,23 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
         </div>
       </SidebarContent>
 
-      {/* ---- Bottom gradient amber bar ---- */}
+      {/* ---- Footer: collapse/expand button + gradient bar ---- */}
       <SidebarFooter className="!p-0 !bg-[#0d0b0a]">
+        {/* Expand button visible only when collapsed */}
+        <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-[#968a84] hover:text-[#ffb347] hover:bg-white/5 transition-colors"
+              >
+                <CaretDoubleRight size={14} weight="bold" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Expand Sidebar</TooltipContent>
+          </Tooltip>
+        </div>
         <div className="h-1 w-full bg-gradient-to-r from-transparent via-[rgba(255,179,71,0.2)] to-transparent shrink-0" />
       </SidebarFooter>
     </Sidebar>

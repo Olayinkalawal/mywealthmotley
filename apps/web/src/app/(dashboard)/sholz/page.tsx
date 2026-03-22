@@ -518,6 +518,7 @@ export default function SholzPage() {
       const result = await sendMessageAction({
         message: content,
         tone: effectiveTone,
+        roastLevel: effectiveTone === "roast" ? roastLevel : undefined,
         conversationId,
       });
       if (result.conversationId) setConversationId(result.conversationId);
@@ -575,6 +576,7 @@ export default function SholzPage() {
       const result = await sendMessageAction({
         message: content,
         tone: "roast",
+        roastLevel,
         conversationId,
       });
       if (result.conversationId) setConversationId(result.conversationId);

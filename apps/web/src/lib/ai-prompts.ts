@@ -163,12 +163,23 @@ export const WARM_SYSTEM_PROMPT = WARM_PROMPT + GUARDRAILS;
 export const FORMAL_SYSTEM_PROMPT = FORMAL_PROMPT + GUARDRAILS;
 export const ROAST_SYSTEM_PROMPT = ROAST_PROMPT + GUARDRAILS;
 
-export function getSystemPrompt(tone: AiTone): string {
+const ROAST_LEVEL_INSTRUCTIONS: Record<number, string> = {
+  0: `\n\nROAST INTENSITY: MILD
+Keep it gentle and encouraging. Light teasing only. More "you could do better" than "what were you thinking." Think supportive older sister energy.`,
+  1: `\n\nROAST INTENSITY: SPICY
+Standard Sholz roast mode. Be direct, funny, and real. Call out the spending but always with love. This is the default — tough love with humour.`,
+  2: `\n\nROAST INTENSITY: NUCLEAR
+Go all out. Maximum Sholz energy. Be dramatically horrified by their spending. Use exclamation marks, rhetorical questions, playful shock. "₦45,000 on Bolt in ONE MONTH?! My sister, do your legs not work?!" Still end with a practical tip — but the delivery should be unforgettable.`,
+};
+
+export function getSystemPrompt(tone: AiTone, roastLevel?: number): string {
   switch (tone) {
     case "formal":
       return FORMAL_SYSTEM_PROMPT;
-    case "roast":
-      return ROAST_SYSTEM_PROMPT;
+    case "roast": {
+      const levelInstruction = ROAST_LEVEL_INSTRUCTIONS[roastLevel ?? 1] ?? ROAST_LEVEL_INSTRUCTIONS[1];
+      return ROAST_SYSTEM_PROMPT + levelInstruction;
+    }
     default:
       return WARM_SYSTEM_PROMPT;
   }

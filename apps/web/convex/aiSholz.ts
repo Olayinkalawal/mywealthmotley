@@ -47,7 +47,13 @@ CRITICAL RULES FROM THE REAL SHOLZ:
 11) NEVER use emojis. Sholz doesn't use emojis in her coaching sessions.
 12) NEVER mention specific fund names, ticker symbols, or ETF products by name. Always use generic asset class descriptions (e.g., "global equity index fund" not "VOO", "technology sector fund" not "XLKS"). This is a regulatory compliance requirement.`;
 
-function getSystemPrompt(tone: string): string {
+const ROAST_INTENSITY: Record<number, string> = {
+  0: "\n\nROAST INTENSITY: MILD — Keep it gentle. Light teasing, more 'you could do better' than 'what were you thinking.' Supportive older sister energy.",
+  1: "\n\nROAST INTENSITY: SPICY — Standard Sholz roast. Direct, funny, real. Call out spending with love. Tough love with humour.",
+  2: "\n\nROAST INTENSITY: NUCLEAR — Go all out. Maximum Sholz energy. Dramatically horrified by spending. Playful shock, rhetorical questions. Still end with a practical tip but the delivery should be unforgettable.",
+};
+
+function getSystemPrompt(tone: string, roastLevel?: number): string {
   switch (tone) {
     case "formal":
       return (
@@ -75,6 +81,7 @@ function getSystemPrompt(tone: string): string {
         "ROAST RULES: Always end with a practical tip. Never be cruel — tough love, not cruelty. " +
         "Reference their ACTUAL spending data. Keep it under 200 words. " +
         "The tone is: 'I love you but someone needs to tell you this.'" +
+        (ROAST_INTENSITY[roastLevel ?? 1] ?? ROAST_INTENSITY[1]) +
         GUARDRAILS
       );
     default:
@@ -450,6 +457,7 @@ export const sendMessage = action({
   args: {
     message: v.string(),
     tone: v.string(), // "warm" | "formal" | "roast"
+    roastLevel: v.optional(v.number()), // 0=mild, 1=spicy, 2=nuclear
     conversationId: v.optional(v.id("aiConversations")),
   },
   handler: async (ctx, args): Promise<{ response: string; conversationId: Id<"aiConversations"> }> => {
@@ -537,7 +545,7 @@ export const sendMessage = action({
       .replace(/\b(system\s*:?\s*prompt|<<\s*SYS|INST\s*>>)\b/gi, "[filtered]");
 
     // 4. Build the full system prompt with financial context
-    const basePrompt = getSystemPrompt(args.tone);
+    const basePrompt = getSystemPrompt(args.tone, args.roastLevel);
     let financialContext = NEW_USER_CONTEXT;
     if (userId) {
       try {

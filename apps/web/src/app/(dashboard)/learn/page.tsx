@@ -12,6 +12,7 @@ import {
   Clock,
   Lightning,
 } from "@phosphor-icons/react";
+import { WmExternalLink } from "@/components/wm/wm-external-link";
 
 // ── Types ────────────────────────────────────────────────────────────
 type ContentType = "article" | "video" | "quiz" | "exercise";
@@ -124,10 +125,8 @@ function CourseLinkButton({
           : "Take Course";
 
   return (
-    <a
+    <WmExternalLink
       href={url}
-      target="_blank"
-      rel="noopener noreferrer"
       className="mt-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all inline-flex items-center gap-2 w-max no-underline"
       style={{
         fontFamily: "'JetBrains Mono', monospace",
@@ -137,13 +136,17 @@ function CourseLinkButton({
         cursor: "pointer",
         textDecoration: "none",
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
-      <ContentTypeIcon type={type} size={12} color={hovered ? "#0d0b0a" : accentColor} />
-      {label}
-      <ArrowRight size={12} weight="bold" />
-    </a>
+      <span
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="inline-flex items-center gap-2"
+      >
+        <ContentTypeIcon type={type} size={12} color={hovered ? "#0d0b0a" : accentColor} />
+        {label}
+        <ArrowRight size={12} weight="bold" />
+      </span>
+    </WmExternalLink>
   );
 }
 
@@ -889,10 +892,8 @@ function ContinueLearningBanner({
             </div>
           </div>
 
-          <a
+          <WmExternalLink
             href={resumeLesson.courseUrl}
-            target="_blank"
-            rel="noopener noreferrer"
             className="flex items-center gap-2 px-6 py-3 rounded-full text-sm uppercase tracking-wider font-bold transition-all flex-shrink-0 no-underline"
             style={{
               fontFamily: "'DynaPuff', cursive",
@@ -903,18 +904,10 @@ function ContinueLearningBanner({
               cursor: "pointer",
               textDecoration: "none",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = resumePath!.colorLight;
-              e.currentTarget.style.transform = "scale(1.05)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = resumePath!.color;
-              e.currentTarget.style.transform = "scale(1)";
-            }}
           >
             <ArrowRight size={16} weight="bold" />
             Resume
-          </a>
+          </WmExternalLink>
         </div>
       </div>
     </div>

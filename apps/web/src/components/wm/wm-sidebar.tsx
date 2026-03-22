@@ -423,22 +423,22 @@ export function WmSidebar({ variant = "default" }: WmSidebarProps) {
             icon={PiggyBank}
             label="Savings"
           />
+        </div>
+
+        {/* === Grow === */}
+        <div className="flex flex-col gap-1">
+          <SectionLabel>Grow</SectionLabel>
           <NavItem
             href={ROUTES.portfolio}
             active={isActive(ROUTES.portfolio)}
             icon={TrendUp}
-            label="Portfolio"
+            label="Simulated Portfolio"
             badge={
               !portfolioDotDismissed && !isActive(ROUTES.portfolio) ? (
                 <PulseDot onClick={() => setPortfolioDotDismissed(true)} />
               ) : undefined
             }
           />
-        </div>
-
-        {/* === Grow === */}
-        <div className="flex flex-col gap-1">
-          <SectionLabel>Grow</SectionLabel>
           <NavItem
             href={ROUTES.learn}
             active={isActive(ROUTES.learn)}

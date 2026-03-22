@@ -7,8 +7,15 @@ import type { AiTone } from "@/lib/ai-prompts";
 import { useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────────────────────────
+
+interface MathBreakdown {
+  label: string;
+  value: string;
+  color: string;
+}
 
 interface ChatMessage {
   id: string;
@@ -19,6 +26,7 @@ interface ChatMessage {
   spicy?: boolean;
   showActions?: boolean;
   showFeedback?: boolean;
+  mathBreakdown?: MathBreakdown[] | null;
 }
 
 // ── Sholz Avatar ────────────────────────────────────────────────────────
@@ -97,33 +105,37 @@ function TypingIndicator() {
 function MessageActions({
   onShowMath,
   onRoastHarder,
+  hasMath = false,
 }: {
   onShowMath: () => void;
   onRoastHarder: () => void;
+  hasMath?: boolean;
 }) {
   return (
     <div className="flex flex-wrap gap-2 mt-2">
-      <button
-        onClick={onShowMath}
-        className="wm-mono text-xs uppercase tracking-wide border border-white/10 bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
-      >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
+      {hasMath && (
+        <button
+          onClick={onShowMath}
+          className="wm-mono text-xs uppercase tracking-wide border border-white/10 bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
         >
-          <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4" />
-          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-          <path d="M3 15h6" />
-          <path d="M3 18h6" />
-          <path d="M13 15h6" />
-          <path d="M13 18h6" />
-        </svg>
-        Show Math
-      </button>
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4" />
+            <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+            <path d="M3 15h6" />
+            <path d="M3 18h6" />
+            <path d="M13 15h6" />
+            <path d="M13 18h6" />
+          </svg>
+          Show Math
+        </button>
+      )}
       <button
         onClick={onRoastHarder}
         className="wm-mono text-xs uppercase tracking-wide border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
@@ -146,17 +158,35 @@ function MessageActions({
 }
 
 // ── Math Modal ──────────────────────────────────────────────────────────
+// Now dynamically driven: only shows when AI response includes cost-comparison data.
+
+function parseMathFromResponse(response: string): MathBreakdown[] | null {
+  // Look for cost-comparison patterns in the AI response.
+  // The AI may include structured lines like "Item: ₦420,000" or "Cost: ₦X"
+  // For now, detect if the response mentions a cost comparison and return null
+  // (no hardcoded data). In future, the AI backend can return structured data.
+  const hasCostComparison =
+    /cost.*vs|compare.*price|saves?\s+you|monthly.*saving|you.*(save|spend).*instead/i.test(
+      response
+    );
+  if (!hasCostComparison) return null;
+  // Return empty array to signal "comparison detected but no structured breakdown yet"
+  return [];
+}
 
 function MathModal({
   isOpen,
   onClose,
-  fmtCurr,
+  breakdown,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  fmtCurr: (n: number) => string;
+  breakdown: MathBreakdown[] | null;
 }) {
-  if (!isOpen) return null;
+  if (!isOpen || !breakdown) return null;
+
+  const hasRows = breakdown.length > 0;
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
@@ -184,28 +214,24 @@ function MathModal({
           </svg>
         </button>
         <h3 className="wm-heading text-lg text-white mb-4">The Math</h3>
-        <div className="space-y-3 wm-mono text-sm">
-          <div className="flex justify-between items-center border-b border-white/5 pb-2">
-            <span className="text-white/60">iPhone 15 Pro Cost</span>
-            <span className="text-red-400">{fmtCurr(420000)}</span>
+        {hasRows ? (
+          <div className="space-y-3 wm-mono text-sm">
+            {breakdown.map((row, i) => (
+              <div
+                key={i}
+                className="flex justify-between items-center border-b border-white/5 pb-2"
+              >
+                <span className="text-white/60">{row.label}</span>
+                <span style={{ color: row.color }}>{row.value}</span>
+              </div>
+            ))}
           </div>
-          <div className="flex justify-between items-center border-b border-white/5 pb-2">
-            <span className="text-white/60">Monthly Japa Contribution</span>
-            <span className="text-blue-400">{fmtCurr(210000)}</span>
-          </div>
-          <div className="flex justify-between items-center border-b border-white/5 pb-2">
-            <span className="text-white/60">Months of Japa Fund Lost</span>
-            <span className="text-yellow-400">2 months</span>
-          </div>
-          <div className="flex justify-between items-center pt-1">
-            <span className="text-white font-bold">Current Japa Progress</span>
-            <span className="text-green-400">43%</span>
-          </div>
-        </div>
-        <p className="text-white/60 text-xs mt-4 leading-relaxed">
-          Buying the iPhone delays your Japa goal by approximately 2 months.
-          Your current phone is functional. Choose wisely.
-        </p>
+        ) : (
+          <p className="text-white/60 text-sm leading-relaxed">
+            Mo detected a cost comparison in this response. Detailed breakdowns
+            will be available once your accounts are connected.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -443,14 +469,25 @@ export default function SholzPage() {
   const [tone, setTone] = useState<AiTone>("warm");
   const [roastLevel, setRoastLevel] = useState(1);
   const [mathModalOpen, setMathModalOpen] = useState(false);
+  const [activeMathBreakdown, setActiveMathBreakdown] = useState<MathBreakdown[] | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<
     Id<"aiConversations"> | undefined
   >(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, "up" | "down">>({});
 
   const sendMessageAction = useAction(api.aiSholz.sendMessage);
+
+  const handleFeedback = useCallback((msgId: string, type: "up" | "down") => {
+    setFeedbackGiven((prev) => ({ ...prev, [msgId]: type }));
+    if (type === "up") {
+      toast.success("Thanks for the feedback!");
+    } else {
+      toast.info("Got it, Mo will try to improve.");
+    }
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -485,6 +522,7 @@ export default function SholzPage() {
       });
       if (result.conversationId) setConversationId(result.conversationId);
 
+      const mathData = parseMathFromResponse(result.response);
       const assistantMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         role: "assistant",
@@ -493,6 +531,7 @@ export default function SholzPage() {
         spicy: effectiveTone === "roast",
         showFeedback: effectiveTone === "roast",
         showActions: effectiveTone !== "roast",
+        mathBreakdown: mathData,
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch {
@@ -583,8 +622,11 @@ export default function SholzPage() {
     <div className="flex h-[calc(100vh-5rem)] w-full gap-6 relative">
       <MathModal
         isOpen={mathModalOpen}
-        onClose={() => setMathModalOpen(false)}
-        fmtCurr={fmtCurr}
+        onClose={() => {
+          setMathModalOpen(false);
+          setActiveMathBreakdown(null);
+        }}
+        breakdown={activeMathBreakdown}
       />
 
       {/* Chat section */}
@@ -816,24 +858,36 @@ export default function SholzPage() {
                         </div>
                         {msg.showFeedback && (
                           <div className="flex items-center gap-3 mt-1 ml-1">
-                            <button className="transition-colors hover:text-white text-[#968a84]">
+                            <button
+                              onClick={() => handleFeedback(msg.id, "up")}
+                              className="transition-colors hover:text-white"
+                              style={{
+                                color: feedbackGiven[msg.id] === "up" ? "#34d399" : "#968a84",
+                              }}
+                            >
                               <svg
                                 width="14"
                                 height="14"
                                 viewBox="0 0 24 24"
-                                fill="none"
+                                fill={feedbackGiven[msg.id] === "up" ? "currentColor" : "none"}
                                 stroke="currentColor"
                                 strokeWidth="2"
                               >
                                 <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
                               </svg>
                             </button>
-                            <button className="transition-colors hover:text-white text-[#968a84]">
+                            <button
+                              onClick={() => handleFeedback(msg.id, "down")}
+                              className="transition-colors hover:text-white"
+                              style={{
+                                color: feedbackGiven[msg.id] === "down" ? "#ef4444" : "#968a84",
+                              }}
+                            >
                               <svg
                                 width="14"
                                 height="14"
                                 viewBox="0 0 24 24"
-                                fill="none"
+                                fill={feedbackGiven[msg.id] === "down" ? "currentColor" : "none"}
                                 stroke="currentColor"
                                 strokeWidth="2"
                               >
@@ -858,8 +912,12 @@ export default function SholzPage() {
                         )}
                         {msg.showActions && (
                           <MessageActions
-                            onShowMath={() => setMathModalOpen(true)}
+                            onShowMath={() => {
+                              setActiveMathBreakdown(msg.mathBreakdown ?? null);
+                              setMathModalOpen(true);
+                            }}
                             onRoastHarder={handleRoastMe}
+                            hasMath={msg.mathBreakdown != null}
                           />
                         )}
                       </div>

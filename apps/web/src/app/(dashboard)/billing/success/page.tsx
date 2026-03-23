@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle } from "@phosphor-icons/react";
 
-export default function BillingSuccessPage() {
+function BillingSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan") ?? "Pro";
@@ -132,5 +132,13 @@ export default function BillingSuccessPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function BillingSuccessPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "60vh" }} />}>
+      <BillingSuccessContent />
+    </Suspense>
   );
 }

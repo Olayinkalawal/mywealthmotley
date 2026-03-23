@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as aiSholz from "../aiSholz.js";
 import type * as allMyMoney from "../allMyMoney.js";
+import type * as billing from "../billing.js";
 import type * as blackTax from "../blackTax.js";
 import type * as budgets from "../budgets.js";
 import type * as crons from "../crons.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   aiSholz: typeof aiSholz;
   allMyMoney: typeof allMyMoney;
+  billing: typeof billing;
   blackTax: typeof blackTax;
   budgets: typeof budgets;
   crons: typeof crons;

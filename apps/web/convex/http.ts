@@ -268,35 +268,118 @@ http.route({
       const eventType = parsedBody.event as string;
 
       switch (eventType) {
-        case "charge.success":
-          // TODO: Update subscription status
-          console.log("Paystack charge success:", parsedBody.data?.reference);
-          break;
+        case "charge.success": {
+          const customerEmail = parsedBody.data?.customer?.email;
+          const reference = parsedBody.data?.reference;
+          const planObj = parsedBody.data?.plan;
+          console.log("Paystack charge success:", reference);
 
-        case "subscription.create":
-          // TODO: Create/update subscription record
-          console.log(
-            "Paystack subscription created:",
-            parsedBody.data?.subscription_code
-          );
+          if (customerEmail) {
+            const user = await ctx.runQuery(
+              internal.billing.getUserByEmail,
+              { email: customerEmail }
+            );
+            if (user) {
+              // Determine tier from plan amount (kobo): 250000 = pro, 500000 = premium
+              const amount = parsedBody.data?.amount ?? planObj?.amount ?? 0;
+              const tier = amount >= 500000 ? "premium" : "pro";
+              const subscriptionCode =
+                parsedBody.data?.subscription_code ??
+                parsedBody.data?.reference ??
+                "";
+
+              await ctx.runMutation(internal.billing.activateSubscription, {
+                userId: user._id,
+                tier: tier as "pro" | "premium",
+                provider: "paystack",
+                externalId: subscriptionCode,
+                planCode: planObj?.plan_code,
+              });
+            } else {
+              console.error(
+                "[paystack] charge.success: user not found for email:",
+                customerEmail
+              );
+            }
+          }
           break;
+        }
+
+        case "subscription.create": {
+          const customerEmail = parsedBody.data?.customer?.email;
+          const subscriptionCode = parsedBody.data?.subscription_code;
+          const planObj = parsedBody.data?.plan;
+          console.log("Paystack subscription created:", subscriptionCode);
+
+          if (customerEmail) {
+            const user = await ctx.runQuery(
+              internal.billing.getUserByEmail,
+              { email: customerEmail }
+            );
+            if (user) {
+              const amount = planObj?.amount ?? 0;
+              const tier = amount >= 500000 ? "premium" : "pro";
+
+              await ctx.runMutation(internal.billing.activateSubscription, {
+                userId: user._id,
+                tier: tier as "pro" | "premium",
+                provider: "paystack",
+                externalId: subscriptionCode ?? "",
+                planCode: planObj?.plan_code,
+              });
+            } else {
+              console.error(
+                "[paystack] subscription.create: user not found for email:",
+                customerEmail
+              );
+            }
+          }
+          break;
+        }
 
         case "subscription.not_renew":
-        case "subscription.disable":
-          // TODO: Handle subscription cancellation
-          console.log(
-            "Paystack subscription ending:",
-            parsedBody.data?.subscription_code
-          );
-          break;
+        case "subscription.disable": {
+          const subscriptionCode = parsedBody.data?.subscription_code;
+          const customerEmail = parsedBody.data?.customer?.email;
+          console.log("Paystack subscription ending:", subscriptionCode);
 
-        case "invoice.payment_failed":
-          // TODO: Mark subscription as past_due, notify user
-          console.log(
-            "Paystack payment failed:",
-            parsedBody.data?.reference
-          );
+          if (customerEmail) {
+            const user = await ctx.runQuery(
+              internal.billing.getUserByEmail,
+              { email: customerEmail }
+            );
+            if (user) {
+              await ctx.runMutation(internal.billing.cancelSubscription, {
+                userId: user._id,
+                externalId: subscriptionCode,
+              });
+            }
+          } else if (subscriptionCode) {
+            await ctx.runMutation(internal.billing.cancelSubscription, {
+              externalId: subscriptionCode,
+            });
+          }
           break;
+        }
+
+        case "invoice.payment_failed": {
+          const customerEmail = parsedBody.data?.customer?.email;
+          const reference = parsedBody.data?.reference;
+          console.log("Paystack payment failed:", reference);
+
+          if (customerEmail) {
+            const user = await ctx.runQuery(
+              internal.billing.getUserByEmail,
+              { email: customerEmail }
+            );
+            if (user) {
+              await ctx.runMutation(internal.billing.markPaymentFailed, {
+                userId: user._id,
+              });
+            }
+          }
+          break;
+        }
 
         default:
           console.log("Unhandled Paystack event:", eventType);
@@ -375,37 +458,116 @@ http.route({
       const eventType = parsedBody.type as string;
 
       switch (eventType) {
-        case "checkout.session.completed":
-          // TODO: Activate subscription for the user
-          console.log(
-            "Stripe checkout completed:",
-            parsedBody.data?.object?.id
-          );
-          break;
+        case "checkout.session.completed": {
+          const session = parsedBody.data?.object;
+          const customerEmail = session?.customer_email;
+          const subscriptionId = session?.subscription;
+          const metadata = session?.metadata;
+          console.log("Stripe checkout completed:", session?.id);
 
-        case "customer.subscription.updated":
-          // TODO: Sync subscription status changes
+          if (customerEmail) {
+            const user = await ctx.runQuery(
+              internal.billing.getUserByEmail,
+              { email: customerEmail }
+            );
+            if (user) {
+              // Determine tier from metadata or default to pro
+              const tier = metadata?.planId === "premium" ? "premium" : "pro";
+
+              await ctx.runMutation(internal.billing.activateSubscription, {
+                userId: user._id,
+                tier: tier as "pro" | "premium",
+                provider: "stripe",
+                externalId: subscriptionId ?? session?.id ?? "",
+                planCode: metadata?.planId,
+              });
+            } else {
+              console.error(
+                "[stripe] checkout.session.completed: user not found for email:",
+                customerEmail
+              );
+            }
+          }
+          break;
+        }
+
+        case "customer.subscription.updated": {
+          const subscription = parsedBody.data?.object;
+          const subscriptionId = subscription?.id;
+          const status = subscription?.status;
           console.log(
             "Stripe subscription updated:",
-            parsedBody.data?.object?.id
+            subscriptionId,
+            "status:",
+            status
           );
-          break;
 
-        case "customer.subscription.deleted":
-          // TODO: Handle subscription cancellation
-          console.log(
-            "Stripe subscription deleted:",
-            parsedBody.data?.object?.id
-          );
-          break;
+          if (subscriptionId) {
+            const sub = await ctx.runQuery(
+              internal.billing.getSubscriptionByExternalId,
+              { externalId: subscriptionId }
+            );
 
-        case "invoice.payment_failed":
-          // TODO: Mark subscription as past_due, notify user
-          console.log(
-            "Stripe payment failed:",
-            parsedBody.data?.object?.id
-          );
+            if (sub) {
+              if (status === "active") {
+                // Determine tier from price
+                const priceId = subscription?.items?.data?.[0]?.price?.id;
+                const premiumPriceId = process.env.STRIPE_PREMIUM_PRICE_ID;
+                const tier =
+                  priceId && priceId === premiumPriceId ? "premium" : "pro";
+
+                await ctx.runMutation(internal.billing.activateSubscription, {
+                  userId: sub.userId,
+                  tier: tier as "pro" | "premium",
+                  provider: "stripe",
+                  externalId: subscriptionId,
+                });
+              } else if (status === "past_due") {
+                await ctx.runMutation(internal.billing.markPaymentFailed, {
+                  userId: sub.userId,
+                  externalId: subscriptionId,
+                });
+              } else if (status === "canceled" || status === "unpaid") {
+                await ctx.runMutation(internal.billing.cancelSubscription, {
+                  userId: sub.userId,
+                  externalId: subscriptionId,
+                });
+              }
+            } else {
+              console.error(
+                "[stripe] subscription.updated: no local sub found for:",
+                subscriptionId
+              );
+            }
+          }
           break;
+        }
+
+        case "customer.subscription.deleted": {
+          const subscription = parsedBody.data?.object;
+          const subscriptionId = subscription?.id;
+          console.log("Stripe subscription deleted:", subscriptionId);
+
+          if (subscriptionId) {
+            await ctx.runMutation(internal.billing.cancelSubscription, {
+              externalId: subscriptionId,
+            });
+          }
+          break;
+        }
+
+        case "invoice.payment_failed": {
+          const invoice = parsedBody.data?.object;
+          const subscriptionId = invoice?.subscription;
+          console.log("Stripe payment failed:", invoice?.id);
+
+          if (subscriptionId) {
+            await ctx.runMutation(internal.billing.markPaymentFailed, {
+              externalId: subscriptionId,
+            });
+          }
+          break;
+        }
 
         default:
           console.log("Unhandled Stripe event:", eventType);

@@ -124,10 +124,10 @@ export const initializeStripeCheckout = action({
 
     const successUrl =
       process.env.STRIPE_SUCCESS_URL ??
-      "https://mywealthmotley.com/billing/success?session_id={CHECKOUT_SESSION_ID}";
+      "https://mywealthmotley-web-git-main-olayinkalawals-projects.vercel.app/billing/success?plan=" + args.planId;
     const cancelUrl =
       process.env.STRIPE_CANCEL_URL ??
-      "https://mywealthmotley.com/billing/cancel";
+      "https://mywealthmotley-web-git-main-olayinkalawals-projects.vercel.app/billing/cancel";
 
     // Stripe API uses form-encoded body, NOT JSON
     const params = new URLSearchParams();

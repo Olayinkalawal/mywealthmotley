@@ -203,8 +203,16 @@ export function WmSettingsSubscription() {
 
   // ── Handle upgrade ──────────────────────────────────────────────
   const handleUpgrade = async (planId: "pro" | "premium") => {
-    if (!user?._id) {
+    if (!isAuthenticated) {
       toast.error("Please sign in to upgrade your plan.");
+      return;
+    }
+    if (user === undefined) {
+      toast.info("Still loading your account. Please wait a moment...");
+      return;
+    }
+    if (!user?._id) {
+      toast.error("Account not found. Please complete onboarding first.");
       return;
     }
 
@@ -238,6 +246,10 @@ export function WmSettingsSubscription() {
 
   // ── Handle cancel ───────────────────────────────────────────────
   const handleCancel = async () => {
+    if (!isAuthenticated) {
+      toast.error("Please sign in first.");
+      return;
+    }
     setIsCancelling(true);
     try {
       await cancelSub({});

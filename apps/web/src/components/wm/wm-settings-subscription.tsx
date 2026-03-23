@@ -217,6 +217,7 @@ export function WmSettingsSubscription() {
     }
 
     setLoadingPlan(planId);
+    toast.info(`Starting ${planId} checkout...`);
 
     try {
       if (currency === "NGN") {
@@ -225,14 +226,24 @@ export function WmSettingsSubscription() {
           planId,
           userId: user._id,
         });
-        window.location.href = result.authorization_url;
+        if (result?.authorization_url) {
+          window.location.href = result.authorization_url;
+        } else {
+          toast.error("Paystack did not return a checkout URL.");
+          setLoadingPlan(null);
+        }
       } else {
         // Stripe for international users
         const result = await initStripe({
           planId,
           userId: user._id,
         });
-        window.location.href = result.url;
+        if (result?.url) {
+          window.location.href = result.url;
+        } else {
+          toast.error("Stripe did not return a checkout URL.");
+          setLoadingPlan(null);
+        }
       }
     } catch (error: any) {
       console.error("Checkout error:", error);

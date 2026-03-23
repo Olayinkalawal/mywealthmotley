@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, DynaPuff, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { WmCookieConsent } from "@/components/wm/wm-cookie-consent";
+import { ErrorReporterInit } from "@/lib/error-reporter-init";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -56,6 +57,7 @@ export default function RootLayout({
           {children}
           <Toaster />
           <WmCookieConsent />
+          <ErrorReporterInit />
         </Providers>
       </body>
     </html>
